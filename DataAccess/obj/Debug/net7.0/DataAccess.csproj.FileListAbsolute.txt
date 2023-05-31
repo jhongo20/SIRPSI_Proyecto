@@ -1,0 +1,14 @@
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\bin\Debug\net7.0\DataAccess.deps.json
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\bin\Debug\net7.0\DataAccess.runtimeconfig.json
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\bin\Debug\net7.0\DataAccess.dll
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\bin\Debug\net7.0\DataAccess.pdb
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.csproj.AssemblyReference.cache
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.GeneratedMSBuildEditorConfig.editorconfig
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.AssemblyInfoInputs.cache
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.AssemblyInfo.cs
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.csproj.CoreCompileInputs.cache
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.dll
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\refint\DataAccess.dll
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.pdb
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\DataAccess.genruntimeconfig.cache
+C:\Develop\John Perez Backend\SIRPSI_Proyecto\DataAccess\obj\Debug\net7.0\ref\DataAccess.dll
