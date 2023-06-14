@@ -11,9 +11,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Validations;
 using SIRPSI.Core.Helper;
+using SIRPSI.DTOs.Companies;
 using SIRPSI.DTOs.User;
 using SIRPSI.DTOs.User.Roles;
 using SIRPSI.Helpers.Answers;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection.Metadata;
 using System.Security.Claims;
@@ -288,7 +290,10 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-                var existUser = await context.AspNetUsers.Where(x => x.Document.Equals(userCredentials.Document)).FirstOrDefaultAsync();
+                //Consulta estados
+                var estados = await context.estados.Select(x => new { x.Id, x.IdConsecutivo }).Where(x => x.IdConsecutivo.Equals(1) || x.IdConsecutivo.Equals(2)).Select(x => x.Id).ToListAsync();
+                //Cconsulta usuarios
+                var existUser = await context.AspNetUsers.Where(x => x.Document.Equals(userCredentials.Document) && estados.Contains(x.Status)).FirstOrDefaultAsync();
 
                 if (existUser == null)
                 {
@@ -296,12 +301,26 @@ namespace SIRPSI.Controllers.User
                     {
                         title = "usuario",
                         status = 400,
-                        message = "Usuario NO existe."
+                        message = "Usuario no encontrado o su estado no es activo."
                     });
                 }
 
-                var email = existUser.Email.Trim() != null ? existUser.Email.Trim() : "";
+                var listEmpresasDb = existUser.IdCompany.Split(",").Select(x => x.Trim()).ToList();
 
+                var contextListEmpresas = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id)).ToListAsync();
+
+                var dataEmpresa = contextListEmpresas.Where(x => x.Id.Equals(userCredentials.IdCompany)).FirstOrDefault();
+
+                if (dataEmpresa != null)
+                {
+                    userCredentials.IdCompany = dataEmpresa.Id != null ? dataEmpresa.Id : "";
+                }
+                else
+                {
+                    userCredentials.IdCompany = "";
+                }
+
+                var email = existUser.Email.Trim() != null ? existUser.Email.Trim() : "";
 
                 var result = await signInManager.PasswordSignInAsync(email,
                 userCredentials.Password, isPersistent: false, lockoutOnFailure: false);
@@ -430,15 +449,14 @@ namespace SIRPSI.Controllers.User
         #region Token
         private AuthenticationResponse BuildToken(UserCredentials userCredentials)
         {
-            //var user = context.Users.Where(u => u.Email == userCredentials.Document).FirstOrDefault();
 
             var user = context.AspNetUsers.Where(x => x.Document.Equals(userCredentials.Document)).FirstOrDefault();
 
-            var roles =  context.AspNetUserRoles.Where(x => x.UserId.Equals(user.Id)).Select(x => x.RoleId).ToList();
+            var roles = context.AspNetUserRoles.Where(x => x.UserId.Equals(user.Id)).Select(x => x.RoleId).ToList();
 
             var rolesConcatenados = "";
 
-            if (roles != null || roles.Count != 0) 
+            if (roles != null || roles.Count != 0)
             {
                 rolesConcatenados = string.Join(", ", roles);
             }
@@ -449,9 +467,9 @@ namespace SIRPSI.Controllers.User
             {
                 new Claim("documento", user.Document != null ?user.Document : ""),
                 new Claim("email", user.Email != null ? user.Email: ""),
-                new Claim("roles", rolesConcatenados != null ? rolesConcatenados : ""),
+                new Claim("rol", rolesConcatenados != null ? rolesConcatenados : ""),
                 new Claim("estado", user.Status != null ? user.Status : ""),
-                new Claim("empresa", user.IdCompany != null ? user.IdCompany : "")
+                new Claim("empresa", userCredentials.IdCompany != null ? userCredentials.IdCompany: "")
 
             };
 

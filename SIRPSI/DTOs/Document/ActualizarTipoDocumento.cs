@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SIRPSI.DTOs.Country
+namespace SIRPSI.DTOs.Document
 {
-    public class EditarPais
+    public class ActualizarTipoDocumento
     {
         [Required(ErrorMessage = "El campo {0} es requerido")]
         public string? Id { get; set; }

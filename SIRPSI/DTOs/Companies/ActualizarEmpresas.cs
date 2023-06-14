@@ -2,7 +2,7 @@
 
 namespace SIRPSI.DTOs.Companies
 {
-    public class EditarEmpresas
+    public class ActualizarEmpresas
     {
         [Required(ErrorMessage = "El campo {0} es requerido")]
         public string Id { get; set; }

@@ -1,14 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace SIRPSI.DTOs.Status
+namespace SIRPSI.DTOs.Companies
 {
-    public class EditarEstados
+    public class ActualizarTipoEmpresa
     {
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        public string? Id { get; set; }
+        public string Id { get; set; }
+
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        public string? Nombre { get; set; }
+        public string Nombre { get; set; } = null!;
         [Required(ErrorMessage = "El campo {0} es requerido")]
         public string? Descripcion { get; set; }
+
     }
 }

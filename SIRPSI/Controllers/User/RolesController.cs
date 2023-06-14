@@ -7,6 +7,7 @@ using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +67,12 @@ namespace SIRPSI.Controllers.User
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -74,51 +80,100 @@ namespace SIRPSI.Controllers.User
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar roles",
+                        title = "Consultar roles",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                var estado = await context.estados.Where(x => x.Id.Equals(consultarRoles.Status)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (estado == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Consultar roles",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
-                //Consulta el rol
-                var roles = context.AspNetRoles.Where(x => x.Status.Equals(estado.Id)).Select(x => new
-                {
-                    x.Id,
-                    x.Name,
-                    x.Description,
-                    x.Status
 
-                }).ToList();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                if (roles == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    return NotFound(new General()
+
+                    //Consulta estado
+                    var estado = await context.estados.Where(x => x.Id.Equals(consultarRoles.Status)).FirstOrDefaultAsync();
+
+                    if (estado == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Consultar roles",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+                    //Consulta el rol
+                    var rol = context.AspNetRoles.Where(x => x.Status.Equals(estado.Id)).Select(x => new
+                    {
+                        x.Id,
+                        x.Name,
+                        x.Description,
+                        x.Status
+
+                    }).ToList();
+
+                    if (rol == null)
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        return NotFound(new General()
+                        {
+                            title = "Consultar roles",
+                            status = 404,
+                            message = "Rol no encontrado"
+                        });
+                    }
+
+                    //Retorno de los datos encontrados
+                    return rol;
+                }
+                else
+                {
+                    return BadRequest(new General()
                     {
                         title = "Consultar roles",
-                        status = 404,
-                        message = "Rol no encontrado"
+                        status = 400,
+                        message = "No tiene permisos para consultar roles"
                     });
                 }
-
-                //Retorno de los datos encontrados
-                return roles;
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Consultar roles " + ex.Message.ToString());
+                logger.LogError("Consultar roles " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Consultar roles",
@@ -144,8 +199,12 @@ namespace SIRPSI.Controllers.User
                 {
                     IEnumerable<Claim> claims = identity.Claims;
                 }
-
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -159,47 +218,96 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-                var estado = await context.estados.Where(x => x.Id.Equals(registrarRoles.Status)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (estado == null)
+                //Consulta de roles por id de usuario
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Registrar roles",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
-                //Mapeo de datos en clases
-                var roles = mapper.Map<Roles>(registrarRoles);
-                //Valores asignados
-                roles.Id = Guid.NewGuid().ToString();
-                roles.Name = registrarRoles.Name;
-                roles.Status = estado.Id;
-                roles.ConcurrencyStamp = Guid.NewGuid().ToString();
-                roles.Description = registrarRoles.Description;
-                roles.UserRegistration = usuario.Document;
-                roles.RegistrationDate = DateTime.Now.ToDateTimeZone().DateTime;
-                roles.UserModify = null;
-                roles.ModifiedDate = null;
 
-                //Agregar datos al contexto
-                context.Add(roles);
-                //Guardado de datos 
-                await context.SaveChangesAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                return Created("", new General()
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Registrar roles",
-                    status = 201,
-                    message = "Rol creado"
-                }); ;
+
+                    var estado = await context.estados.Where(x => x.Id.Equals(registrarRoles.Status)).FirstOrDefaultAsync();
+
+                    if (estado == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Registrar roles",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+                    //Mapeo de datos en clases
+                    var rol = mapper.Map<Roles>(registrarRoles);
+                    //Valores asignados
+                    rol.Id = Guid.NewGuid().ToString();
+                    rol.Name = registrarRoles.Name;
+                    rol.Status = estado.Id;
+                    rol.ConcurrencyStamp = Guid.NewGuid().ToString();
+                    rol.Description = registrarRoles.Description;
+                    rol.UserRegistration = usuario.Document;
+                    rol.RegistrationDate = DateTime.Now.ToDateTimeZone().DateTime;
+                    rol.UserModify = null;
+                    rol.ModifiedDate = null;
+
+                    //Agregar datos al contexto
+                    context.Add(rol);
+                    //Guardado de datos 
+                    await context.SaveChangesAsync();
+
+                    return Created("", new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Registrar roles",
+                        status = 201,
+                        message = "Rol creado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Registrar roles",
+                        status = 400,
+                        message = "No tiene permisos para registrar roles"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Registrar roles " + ex.Message.ToString());
+                logger.LogError("Registrar roles " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Registrar roles",
@@ -210,10 +318,10 @@ namespace SIRPSI.Controllers.User
         }
         #endregion
 
-        #region Editar
-        [HttpPut("EditarRoles")]
+        #region Actualizar
+        [HttpPut("ActualizarRoles")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Put(EditarRol editarRol)
+        public async Task<ActionResult> Put(ActualizarRol actualizarRol)
         {
             try
             {
@@ -225,7 +333,12 @@ namespace SIRPSI.Controllers.User
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -233,55 +346,107 @@ namespace SIRPSI.Controllers.User
                 {
                     return NotFound(new General()
                     {
-                        title = "Editar roles",
+                        title = "Actualizar roles",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                //Consulta de roles de usuario
-                var existeRol = await context.AspNetRoles.Where(x => x.Id.Equals(editarRol.Id)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (existeRol == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    return NotFound(new
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
                     {
-                        //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Editar roles",
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
+                {
+                    return NotFound(new General()
+                    {
+                        title = "Actualizar roles",
                         status = 404,
-                        message = "Rol no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
-                //Consulta de estados
-                var estados = await context.estados.ToListAsync();
-                //Registro de datos
-                context.AspNetRoles.Where(x => x.Id.Equals(editarRol.Id)).ToList()
-                    .ForEach(r =>
-                    {
-                        r.Name = editarRol.Name;
-                        r.Description = editarRol.Description;
-                        r.UserModify = usuario.Document;
-                        r.ModifiedDate = DateTime.Now.ToDateTimeZone().DateTime; 
-                    });
-                //Guardado de datos
-                await context.SaveChangesAsync();
 
-                return Ok(new General()
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
+
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Actualizar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Editar roles",
-                    status = 200,
-                    message = "Rol actualizado"
-                });
+                    //Consulta de roles de usuario
+                    var existeRol = await context.AspNetRoles.Where(x => x.Id.Equals(actualizarRol.Id)).FirstOrDefaultAsync();
+
+                    if (existeRol == null)
+                    {
+                        return NotFound(new
+                        {
+                            //Visualizacion de mensajes al usuario del aplicativo
+                            title = "Actualizar roles",
+                            status = 404,
+                            message = "Rol no encontrado"
+                        });
+                    }
+
+                    //Consulta de estados
+                    var estados = await context.estados.ToListAsync();
+
+                    //Registro de datos
+                    context.AspNetRoles.Where(x => x.Id.Equals(actualizarRol.Id)).ToList()
+                        .ForEach(r =>
+                        {
+                            r.Name = actualizarRol.Name;
+                            r.Description = actualizarRol.Description;
+                            r.UserModify = usuario.Document;
+                            r.ModifiedDate = DateTime.Now.ToDateTimeZone().DateTime;
+                        });
+
+                    //Guardado de datos
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Actualizar roles",
+                        status = 200,
+                        message = "Rol actualizado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Actualizar roles",
+                        status = 400,
+                        message = "No tiene permisos para actualizar roles"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError("Editar roles " + ex.Message.ToString());
+                logger.LogError("Actualizar roles " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Editar roles",
+                    title = "Actualizar roles",
                     status = 400,
-                    message = ""
+                    message = "Contacte con el administrador del sistema"
                 }); ;
             }
         }
@@ -302,7 +467,12 @@ namespace SIRPSI.Controllers.User
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -316,45 +486,97 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-                var estados = await context.estados.ToListAsync();
 
-                //Consulta de roles
-                var existeRol = context.AspNetRoles.Where(x => x.Id.Equals(eliminarRol.Id)).FirstOrDefault();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (existeRol == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Eliminar roles",
                         status = 404,
-                        message = "Rol no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Agregar datos al contexto
-                context.AspNetRoles.Where(x => x.Id.Equals(eliminarRol.Id)).ToList()
-                  .ForEach(r =>
-                  {
-                      r.Status = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
-                      r.UserModify = usuario.Document;
-                      r.ModifiedDate = DateTime.Now.ToDateTimeZone().DateTime;
-                  });
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Se elimina el regitro
-                await context.SaveChangesAsync();
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Eliminar.Equals(true)).FirstOrDefault();
 
-                return Ok(new General()
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Eliminar roles",
-                    status = 200,
-                    message = "Rol eliminado"
-                });
+
+                    //Consulta estados
+                    var estados = await context.estados.ToListAsync();
+
+                    //Consulta de roles
+                    var existeRol = context.AspNetRoles.Where(x => x.Id.Equals(eliminarRol.Id)).FirstOrDefault();
+
+                    if (existeRol == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar roles",
+                            status = 404,
+                            message = "Rol no encontrado"
+                        });
+                    }
+
+                    //Agrega datos al contexto
+                    context.AspNetRoles.Where(x => x.Id.Equals(eliminarRol.Id)).ToList()
+                      .ForEach(r =>
+                      {
+                          r.Status = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
+                          r.UserModify = usuario.Document;
+                          r.ModifiedDate = DateTime.Now.ToDateTimeZone().DateTime;
+                      });
+
+                    //Se elimina el regitro
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Eliminar roles",
+                        status = 200,
+                        message = "Rol eliminado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Eliminar roles",
+                        status = 400,
+                        message = "No tiene permisos para eliminar roles"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError(ex.Message.ToString());
+                logger.LogError("Eliminar roles " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Eliminar roles",
@@ -363,7 +585,7 @@ namespace SIRPSI.Controllers.User
                 });
             }
 
-            }
+        }
         #endregion
 
     }

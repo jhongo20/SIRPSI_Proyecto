@@ -11,6 +11,7 @@ using DataAccess.Models.Country;
 using DataAccess.Models.Documents;
 using DataAccess.Models.Users;
 using DataAccess.Models.Rols;
+using DataAccess.Models.Permissions;
 
 namespace DataAccess.Context
 {
@@ -34,6 +35,7 @@ namespace DataAccess.Context
         public DbSet<TiposEmpresa> tiposEmpresas { get; set; }
         public DbSet<Pais> pais { get; set; }
         public DbSet<TiposDocumento> tiposDocumento { get; set; }
+        public DbSet<PermisosXUsuario> permisosXUsuario { get; set; }
 
 
         //private void SeeData(ModelBuilder modelBuilder)

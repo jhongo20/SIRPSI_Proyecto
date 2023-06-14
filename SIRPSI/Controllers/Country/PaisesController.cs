@@ -1,12 +1,14 @@
 ﻿using AutoMapper;
 using DataAccess.Context;
 using DataAccess.Models.Country;
+using DataAccess.Models.Rols;
 using DataAccess.Models.Status;
 using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +68,12 @@ namespace SIRPSI.Controllers.Country
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -74,52 +81,101 @@ namespace SIRPSI.Controllers.Country
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar país",
+                        title = "Consultar país",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
-                //Consulta estados
-                var estados = await context.estados.Where(x => x.Id.Equals(consultarPaises.IdEstado)).ToListAsync();
 
-                if (estados == null)
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
+
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    return NotFound(new General()
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
                     {
-                        title = "Registrar país",
-                        status = 404,
-                        message = "Estado no encontrado"
-                    });
+                        rolesList.Add(result.ToString());
+                    }
                 }
 
-                //Consulta el país
-                var pais = context.pais.Where(x => x.IdEstado.Equals(consultarPaises.IdEstado)).Select(x => new
+                if (rolesList == null)
                 {
-                    x.Id,    
-                    x.Nombre,
-                    x.Descripcion,
-                    x.IdEstado
-
-                }).ToList();
-
-                if (pais == null)
-                {
-                    //Visualizacion de mensajes al usuario del aplicativo
                     return NotFound(new General()
                     {
                         title = "Consultar país",
                         status = 404,
-                        message = "Países no encontrados"
+                        message = "Roles no encontrados"
                     });
                 }
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Retorno de los datos encontrados
-                return pais;
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
+                {
+
+                    //Consulta estados
+                    var estados = await context.estados.Where(x => x.Id.Equals(consultarPaises.IdEstado)).ToListAsync();
+
+                    if (estados == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Consultar país",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    //Consulta el país
+                    var pais = context.pais.Where(x => x.IdEstado.Equals(consultarPaises.IdEstado)).Select(x => new
+                    {
+                        x.Id,
+                        x.Nombre,
+                        x.Descripcion,
+                        x.IdEstado
+
+                    }).ToList();
+
+                    if (pais == null)
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        return NotFound(new General()
+                        {
+                            title = "Consultar país",
+                            status = 404,
+                            message = "Países no encontrados"
+                        });
+                    }
+
+                    //Retorno de los datos encontrados
+                    return pais;
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Consultar país",
+                        status = 400,
+                        message = "No tiene permisos para consultar paises"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Consultar país " + ex.Message.ToString());
+                logger.LogError("Consultar país " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Consultar país",
@@ -146,7 +202,11 @@ namespace SIRPSI.Controllers.Country
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
 
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
@@ -161,48 +221,97 @@ namespace SIRPSI.Controllers.Country
                     });
                 }
 
-                //Consulta estados
-                var estados = await context.estados.Where(x => x.Id.Equals(registrarPais.IdEstado)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (estados == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar pais",
+                        title = "Registrar país",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Mapeo de datos en clases
-                var pais = mapper.Map<Pais>(registrarPais);
-                //Valores asignados
-                pais.Id = Guid.NewGuid().ToString();
-                pais.Nombre = registrarPais.Nombre != null ? registrarPais.Nombre : "";
-                pais.Descripcion = registrarPais.Descripcion;
-                pais.IdEstado = estados.Id;
-                pais.UsuarioRegistro = usuario.Document != null ? usuario.Document : "";
-                pais.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
-                pais.FechaModifico = null;
-                pais.UsuarioModifico = null;
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();
 
-                //Agregar datos al contexto
-                context.Add(pais);
-                //Guardado de datos 
-                await context.SaveChangesAsync();
-
-                return Created("", new General()
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Registrar pais",
-                    status = 201,
-                    message = "Pais creado"
-                }); ;
+
+                    //Consulta estados
+                    var estados = await context.estados.Where(x => x.Id.Equals(registrarPais.IdEstado)).FirstOrDefaultAsync();
+
+                    if (estados == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Registrar pais",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    //Mapeo de datos en clases
+                    var pais = mapper.Map<Pais>(registrarPais);
+                    //Valores asignados
+                    pais.Id = Guid.NewGuid().ToString();
+                    pais.Nombre = registrarPais.Nombre != null ? registrarPais.Nombre : "";
+                    pais.Descripcion = registrarPais.Descripcion;
+                    pais.IdEstado = estados.Id;
+                    pais.UsuarioRegistro = usuario.Document != null ? usuario.Document : "";
+                    pais.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
+                    pais.FechaModifico = null;
+                    pais.UsuarioModifico = null;
+
+                    //Agregar datos al contexto
+                    context.Add(pais);
+                    //Guardado de datos 
+                    await context.SaveChangesAsync();
+
+                    return Created("", new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Registrar pais",
+                        status = 201,
+                        message = "Pais creado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Registrar país",
+                        status = 400,
+                        message = "No tiene permisos para registrar paises"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Registrar pais " + ex.Message.ToString());
+                logger.LogError("Registrar país " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Registrar pais",
@@ -213,10 +322,10 @@ namespace SIRPSI.Controllers.Country
         }
         #endregion
 
-        #region Editar
-        [HttpPut("EditarPais")]
+        #region Actualizar
+        [HttpPut("ActualizarPais")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Put(EditarPais editarPais)
+        public async Task<ActionResult> Put(ActualizarPais actualizarPais)
         {
             try
             {
@@ -228,7 +337,12 @@ namespace SIRPSI.Controllers.Country
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -236,53 +350,103 @@ namespace SIRPSI.Controllers.Country
                 {
                     return NotFound(new General()
                     {
-                        title = "Editar país",
+                        title = "Actualizar país",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                //Consulta de país del usuario
-                var existePais = await context.pais.Where(x => x.Id.Equals(editarPais.Id)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (existePais == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    return NotFound(new
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
                     {
-                        //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Editar país",
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
+                {
+                    return NotFound(new General()
+                    {
+                        title = "Actualizar empresas",
                         status = 404,
-                        message = "País no encontrad0"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Registro de datos
-                context.pais.Where(x => x.Id.Equals(existePais.Id)).ToList()
-                    .ForEach(r =>
-                    {
-                        r.Nombre = editarPais.Nombre;
-                        r.Descripcion = editarPais.Descripcion;
-                        r.UsuarioModifico = usuario.Document;
-                        r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
-                    });
-                //Guardado de datos
-                await context.SaveChangesAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                return Ok(new General()
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Actualizar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Editar país",
-                    status = 200,
-                    message = "País actualizado"
-                });
+
+                    //Consulta de país del usuario
+                    var existePais = await context.pais.Where(x => x.Id.Equals(actualizarPais.Id)).FirstOrDefaultAsync();
+
+                    if (existePais == null)
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        return NotFound(new
+                        {
+                            //Visualizacion de mensajes al usuario del aplicativo
+                            title = "Actualizar país",
+                            status = 404,
+                            message = "País no encontrad0"
+                        });
+                    }
+
+                    //Registro de datos
+                    context.pais.Where(x => x.Id.Equals(existePais.Id)).ToList()
+                        .ForEach(r =>
+                        {
+                            r.Nombre = actualizarPais.Nombre;
+                            r.Descripcion = actualizarPais.Descripcion;
+                            r.UsuarioModifico = usuario.Document;
+                            r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
+                        });
+                    //Guardado de datos
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Actualizar país",
+                        status = 200,
+                        message = "País actualizado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Actualizar país",
+                        status = 400,
+                        message = "No tiene permisos para actualizar paises"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError("Editar país " + ex.Message.ToString());
+                logger.LogError("Actualizar país " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Editar país",
+                    title = "Actualizar país",
                     status = 400,
                     message = ""
                 }); ;
@@ -305,7 +469,12 @@ namespace SIRPSI.Controllers.Country
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -318,34 +487,75 @@ namespace SIRPSI.Controllers.Country
                         message = "Usuario no encontrado"
                     });
                 }
-                //Consulta estados
-                var estados = await context.estados.ToListAsync();
 
-                if (estados == null)
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
+
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Eliminar país",
                         status = 404,
-                        message = "Estados no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Consulta de país
-                var existePais = await context.pais.Where(x => x.Id.Equals(eliminarPais.Id)).FirstOrDefaultAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                if (existePais == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Eliminar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    return NotFound(new General()
-                    {
-                        title = "Eliminar país",
-                        status = 404,
-                        message = "País no encontrado"
-                    });
-                }
 
-                //Agregar datos al contexto
-                context.pais.Where(x => x.Id.Equals(eliminarPais.Id)).ToList()
+                    //Consulta estados
+                    var estados = await context.estados.ToListAsync();
+
+                    if (estados == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar país",
+                            status = 404,
+                            message = "Estados no encontrado"
+                        });
+                    }
+
+                    //Consulta de país
+                    var existePais = await context.pais.Where(x => x.Id.Equals(eliminarPais.Id)).FirstOrDefaultAsync();
+
+                    if (existePais == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar país",
+                            status = 404,
+                            message = "País no encontrado"
+                        });
+                    }
+
+                    //Agregar datos al contexto
+                    context.pais.Where(x => x.Id.Equals(eliminarPais.Id)).ToList()
                   .ForEach(r =>
                   {
                       r.IdEstado = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
@@ -353,21 +563,32 @@ namespace SIRPSI.Controllers.Country
                       r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
                   });
 
-                //Se elimina el regitro de forma logica
-                await context.SaveChangesAsync();
+                    //Se elimina el regitro de forma logica
+                    await context.SaveChangesAsync();
 
-                return Ok(new General()
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Eliminar país",
+                        status = 200,
+                        message = "país eliminado"
+                    });
+                }
+                else
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Eliminar país",
-                    status = 200,
-                    message = "país eliminado"
-                });
+                    return BadRequest(new General()
+                    {
+                        title = "Eliminar país",
+                        status = 400,
+                        message = "No tiene permisos par eliminar paises"
+                    });
+                }
+
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Eliminar país " + ex.Message.ToString());
+                logger.LogError("Eliminar país " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Eliminar país",

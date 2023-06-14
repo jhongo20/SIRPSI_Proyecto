@@ -3,6 +3,7 @@ using DataAccess.Models.Companies;
 using DataAccess.Models.Country;
 using DataAccess.Models.Documents;
 using DataAccess.Models.Estados;
+using DataAccess.Models.Permissions;
 using DataAccess.Models.Rols;
 using DataAccess.Models.Status;
 using DataAccess.Models.Users;
@@ -13,6 +14,7 @@ using SIRPSI.DTOs.Status;
 using SIRPSI.DTOs.User;
 using SIRPSI.DTOs.User.Roles;
 using SIRPSI.DTOs.User.RolesUsuario;
+using SIRPSI.DTOs.UserPermissions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,6 +30,11 @@ namespace SIRPSI.Helpers
             //Mapeo de la clase usuario
             CreateMap<AspNetUsers, UserCredentials>().ReverseMap();
 
+            CreateMap<PermisosXUsuario, ConsultarPermisosUsuario>().ReverseMap();
+            CreateMap<PermisosXUsuario, RegistrarPermisosUsuario>().ReverseMap();
+            CreateMap<PermisosXUsuario, ActualizarPermisosUsuario>().ReverseMap();
+            CreateMap<PermisosXUsuario, EliminarPermisosUsuario>().ReverseMap();
+
             #endregion
 
             #region Roles
@@ -41,7 +48,7 @@ namespace SIRPSI.Helpers
 
             CreateMap<UserRoles, ConsultarRolesUsuario>().ReverseMap();
             CreateMap<UserRoles, RegistrarRolesUsuario>().ReverseMap();
-            CreateMap<UserRoles, EditarRolesUsuario>().ReverseMap();
+            CreateMap<UserRoles, ActualizarRolesUsuario>().ReverseMap();
             CreateMap<UserRoles, EliminarRolesUsuario>().ReverseMap();
 
             #endregion
@@ -50,7 +57,7 @@ namespace SIRPSI.Helpers
 
             CreateMap<Estados, ConsultarEstados>().ReverseMap();
             CreateMap<Estados, RegistrarEstados>().ReverseMap();
-            CreateMap<Estados, EditarEstados>().ReverseMap();
+            CreateMap<Estados, ActualizarEstados>().ReverseMap();
             CreateMap<Estados, EliminarEstados>().ReverseMap();
 
             #endregion
@@ -59,12 +66,12 @@ namespace SIRPSI.Helpers
 
             CreateMap<Empresas, ConsultarEmpresas>().ReverseMap();
             CreateMap<Empresas, RegistrarEmpresas>().ReverseMap();
-            CreateMap<Empresas, EditarEmpresas>().ReverseMap();
+            CreateMap<Empresas, ActualizarEmpresas>().ReverseMap();
             CreateMap<Empresas, EliminarEmpresas>().ReverseMap();
 
             CreateMap<TiposEmpresa, ConsultarTipoEmpresa>().ReverseMap();
             CreateMap<TiposEmpresa, RegistrarTipoEmpresa>().ReverseMap();
-            CreateMap<TiposEmpresa, EditarTipoEmpresa>().ReverseMap();
+            CreateMap<TiposEmpresa, ActualizarTipoEmpresa>().ReverseMap();
             CreateMap<TiposEmpresa, EliminarTipoEmpresa>().ReverseMap();
 
             #endregion
@@ -72,14 +79,14 @@ namespace SIRPSI.Helpers
             #region País
             CreateMap<Pais, ConsultarPaises>().ReverseMap();
             CreateMap<Pais, RegistrarPais>().ReverseMap();
-            CreateMap<Pais, EditarPais>().ReverseMap();
+            CreateMap<Pais, ActualizarPais>().ReverseMap();
             CreateMap<Pais, EliminarPais>().ReverseMap();
             #endregion
 
             #region Documentos
             CreateMap<TiposDocumento, ConsultarTiposDocumento>().ReverseMap();
             CreateMap<TiposDocumento, RegistrarTipoDocumento>().ReverseMap();
-            CreateMap<TiposDocumento, EditarTipoDocumento>().ReverseMap();
+            CreateMap<TiposDocumento, ActualizarTipoDocumento>().ReverseMap();
             CreateMap<TiposDocumento, EliminarTipoDocumento>().ReverseMap();
             #endregion
 

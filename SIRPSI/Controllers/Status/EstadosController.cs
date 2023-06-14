@@ -6,6 +6,7 @@ using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +64,12 @@ namespace SIRPSI.Controllers.Status
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -71,38 +77,85 @@ namespace SIRPSI.Controllers.Status
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar roles",
+                        title = "Consultar estados",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                //Consulta el estados
-                var estados = await context.estados.Select(x => new
-                {
-                    x.Id,
-                    x.Nombre,
-                    x.Descripcion
-                }).ToListAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (estados == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
+                {
                     return NotFound(new General()
                     {
                         title = "Consultar estados",
                         status = 404,
-                        message = "Estados no encontrados"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Retorno de los datos encontrados
-                return estados;
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
+
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
+                //Si es permitido
+                if (permitido == true)
+                {
+                    //Consulta el estados
+                    var estados = await context.estados.Select(x => new
+                    {
+                        x.Id,
+                        x.Nombre,
+                        x.Descripcion
+                    }).ToListAsync();
+
+                    if (estados == null)
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        return NotFound(new General()
+                        {
+                            title = "Consultar estados",
+                            status = 404,
+                            message = "Estados no encontrados"
+                        });
+                    }
+
+                    //Retorno de los datos encontrados
+                    return estados;
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Consultar estados",
+                        status = 400,
+                        message = "No tiene permisos para consultar estados"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Consultar estados " + ex.Message.ToString() + ex.StackTrace);
+                logger.LogError("Consultar estados " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Consultar estados",
@@ -128,8 +181,13 @@ namespace SIRPSI.Controllers.Status
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
-                //Consulta de estados 
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
+                //Consulta de usuarios
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
                 if (usuario == null)
@@ -142,29 +200,77 @@ namespace SIRPSI.Controllers.Status
                     });
                 }
 
-                //Mapeo de datos en clases
-                var estados = mapper.Map<Estados>(registrarEstados);
-                //Valores asignados
-                estados.Id = Guid.NewGuid().ToString();
-                estados.Nombre = registrarEstados.Nombre != null ? registrarEstados.Nombre : "";
-                estados.Descripcion = registrarEstados.Descripcion;
-                estados.UsuarioRegistro = usuario.Document != null ? usuario.Document : "";
-                estados.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
-                estados.UsuarioModifico = null;
-                estados.UsuarioModifico = null;
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                //Agregar datos al contexto
-                context.Add(estados);
-                //Guardado de datos 
-                await context.SaveChangesAsync();
+                //Consulta de roles por id de usuario
+                var rolesList = new List<string>();
 
-                return Created("", new General()
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Registrar estado",
-                    status = 201,
-                    message = "Estado creado"
-                }); ;
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
+                {
+                    return NotFound(new General()
+                    {
+                        title = "Registrar estados",
+                        status = 404,
+                        message = "Roles no encontrados"
+                    });
+                }
+
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
+
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
+                {
+                    //Mapeo de datos en clases
+                    var estados = mapper.Map<Estados>(registrarEstados);
+                    //Valores asignados
+                    estados.Id = Guid.NewGuid().ToString();
+                    estados.Nombre = registrarEstados.Nombre != null ? registrarEstados.Nombre : "";
+                    estados.Descripcion = registrarEstados.Descripcion;
+                    estados.UsuarioRegistro = usuario.Document != null ? usuario.Document : "";
+                    estados.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
+                    estados.UsuarioModifico = null;
+                    estados.UsuarioModifico = null;
+
+                    //Agregar datos al contexto
+                    context.Add(estados);
+                    //Guardado de datos 
+                    await context.SaveChangesAsync();
+
+                    return Created("", new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Registrar estado",
+                        status = 201,
+                        message = "Estado creado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Registrar estado",
+                        status = 400,
+                        message = "No tiene permisos para registrar estados"
+                    });
+                }
             }
             catch (Exception ex)
             {
@@ -180,10 +286,10 @@ namespace SIRPSI.Controllers.Status
         }
         #endregion
 
-        #region Editar
-        [HttpPut("EditarEstados")]
+        #region Actualizar
+        [HttpPut("ActualizarEstados")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Put(EditarEstados editarEstados)
+        public async Task<ActionResult> Put(ActualizarEstados actualizarEstados)
         {
             try
             {
@@ -195,7 +301,11 @@ namespace SIRPSI.Controllers.Status
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
 
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
@@ -204,57 +314,106 @@ namespace SIRPSI.Controllers.Status
                 {
                     return NotFound(new General()
                     {
-                        title = "Editar estado",
+                        title = "Actualizar estado",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                //Consulta de estados de usuario
-                var existeEstado = await context.estados.Where(x => x.Id.Equals(editarEstados.Id)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (existeEstado == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
                 {
-                    return NotFound(new
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
                     {
-                        //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Editar estado",
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
+                {
+                    return NotFound(new General()
+                    {
+                        title = "Actualizar estado",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Registro de datos
-                context.estados.Where(x => x.Id.Equals(existeEstado.Id)).ToList()
-                    .ForEach(e =>
-                    {
-                        e.Nombre = editarEstados.Nombre != null ? editarEstados.Nombre : "";
-                        e.Descripcion = editarEstados.Descripcion;
-                        e.UsuarioModifico = usuario.Document;
-                        e.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
-                    });
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Guardado de datos
-                await context.SaveChangesAsync();
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Actualizar.Equals(true)).FirstOrDefault();
 
-                return Ok(new General()
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Editar estado",
-                    status = 200,
-                    message = "Estado actualizado"
-                });
+                    //Consulta de estados de usuario
+                    var existeEstado = await context.estados.Where(x => x.Id.Equals(actualizarEstados.Id)).FirstOrDefaultAsync();
+
+                    if (existeEstado == null)
+                    {
+                        return NotFound(new
+                        {
+                            //Visualizacion de mensajes al usuario del aplicativo
+                            title = "Actualizar estado",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    //Registro de datos
+                    context.estados.Where(x => x.Id.Equals(existeEstado.Id)).ToList()
+                        .ForEach(e =>
+                        {
+                            e.Nombre = actualizarEstados.Nombre != null ? actualizarEstados.Nombre : "";
+                            e.Descripcion = actualizarEstados.Descripcion;
+                            e.UsuarioModifico = usuario.Document;
+                            e.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
+                        });
+
+                    //Guardado de datos
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Actualizar estado",
+                        status = 200,
+                        message = "Estado actualizado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Actualizar estado",
+                        status = 400,
+                        message = "No tiene permisos para actualizar estado"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Editar estado " + ex.Message.ToString() + ex.StackTrace);
+                logger.LogError("Actualizar estado " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Editar estado",
+                    title = "Actualizar estado",
                     status = 400,
-                    message = ""
-                }); ;
+                    message = "Contacte con el administrador del sistema"
+                });
             }
         }
         #endregion
@@ -274,7 +433,12 @@ namespace SIRPSI.Controllers.Status
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -288,38 +452,87 @@ namespace SIRPSI.Controllers.Status
                     });
                 }
 
-                var estados = await context.estados.ToListAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                //Consulta de estados
-                var existeEstado = context.estados.Where(x => x.Id.Equals(eliminarEstados.Id)).FirstOrDefault();
+                //Consulta de roles por id de usuario
 
-                if (existeEstado == null)
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Eliminar estados",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                context.Remove(existeEstado);
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Se elimina el regitro
-                await context.SaveChangesAsync();
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Eliminar.Equals(true)).FirstOrDefault();
 
-                return Ok(new General()
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Eliminar estado",
-                    status = 200,
-                    message = "Estado eliminado"
-                });
+                    var estados = await context.estados.ToListAsync();
+
+                    //Consulta de estados
+                    var existeEstado = context.estados.Where(x => x.Id.Equals(eliminarEstados.Id)).FirstOrDefault();
+
+                    if (existeEstado == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar estados",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    context.Remove(existeEstado);
+
+                    //Se elimina el regitro
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Eliminar estado",
+                        status = 200,
+                        message = "Estado eliminado"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Eliminar estado",
+                        status = 400,
+                        message = "No tiene permisos para eliminar estados"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Eliminar estado " + ex.Message.ToString());
+                logger.LogError("Eliminar estado " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Eliminar estado",

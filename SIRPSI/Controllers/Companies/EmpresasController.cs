@@ -1,10 +1,12 @@
 ﻿using AutoMapper;
 using DataAccess.Context;
+using DataAccess.Models.Rols;
 using DataAccess.Models.Status;
 using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -52,7 +54,6 @@ namespace SIRPSI.Controllers.Companies
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult<object>> Get([FromBody] ConsultarEmpresas consultarEmpresas)
         {
-
             try
             {
                 //Claims de usuario - Enviados por token
@@ -63,63 +64,116 @@ namespace SIRPSI.Controllers.Companies
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuarios por documento
-                var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
+                var usuario = await context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefaultAsync();
 
                 if (usuario == null)
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar empresas",
+                        title = "Consultar empresas",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
-                //Consulta estados
-                var estados = await context.estados.Where(x => x.Id.Equals(consultarEmpresas.Id)).ToListAsync();
 
-                if (estados == null)
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
+
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Registrar empresas",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Consulta el empresa
-                var empresa = context.empresas.Where(x => x.IdEstado.Equals(consultarEmpresas.IdEstado)).Select(x => new
-                {
-                    x.Id,
-                    x.TipoDocumento,
-                    x.Documento,
-                    x.DigitoVerificacion,
-                    x.IdTipoEmpresa,
-                    x.Nombre,
-                    x.IdEstado
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                }).ToList();
-
-                if (empresa == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
+                //Si es permitido
+                if (permitido == true)
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    return NotFound(new General()
+                    //Consulta estados
+                    var estados = await context.estados.Where(x => x.Id.Equals(consultarEmpresas.Id)).ToListAsync();
+
+                    if (estados == null)
                     {
-                        title = "Consultar empresas",
-                        status = 404,
-                        message = "Empresa no encontrada"
+                        return NotFound(new General()
+                        {
+                            title = "Consultar empresas",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    //Consulta el empresa
+                    var empresa = context.empresas.Where(x => x.IdEstado.Equals(consultarEmpresas.IdEstado)).Select(x => new
+                    {
+                        x.Id,
+                        x.TipoDocumento,
+                        x.Documento,
+                        x.DigitoVerificacion,
+                        x.IdTipoEmpresa,
+                        x.Nombre,
+                        x.IdEstado
+
+                    }).ToList();
+
+                    if (empresa == null)
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        return NotFound(new General()
+                        {
+                            title = "Consultar empresas",
+                            status = 404,
+                            message = "Empresa no encontrada"
+                        });
+                    }
+
+                    //Retorno de los datos encontrados
+                    return empresa;
+                }
+                else
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "Consultar empresa",
+                        status = 400,
+                        message = "No tiene permisos para consultar empresas"
                     });
                 }
-
-                //Retorno de los datos encontrados
-                return empresa;
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Consultar empresa " + ex.Message.ToString());
+                logger.LogError("Consultar empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Consultar empresa",
@@ -146,7 +200,11 @@ namespace SIRPSI.Controllers.Companies
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
 
                 //Consulta de usuarios por documento
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
@@ -161,78 +219,128 @@ namespace SIRPSI.Controllers.Companies
                     });
                 }
 
-                //Consulta estados
-                var estados = await context.estados.Where(x => x.Id.Equals(registrarEmpresas.IdEstado)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (estados == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar empresa",
+                        title = "Registrar empresas",
                         status = 404,
-                        message = "Estado no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Consulta tipo documento
-                var tipoDocumento = await context.tiposDocumento.Where(x => x.Id.Equals(registrarEmpresas.TipoDocumento)).FirstOrDefaultAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                if (tipoDocumento == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    return NotFound(new General()
+
+                    //Consulta estados
+                    var estados = await context.estados.Where(x => x.Id.Equals(registrarEmpresas.IdEstado)).FirstOrDefaultAsync();
+
+                    if (estados == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Registrar empresa",
+                            status = 404,
+                            message = "Estado no encontrado"
+                        });
+                    }
+
+                    //Consulta tipo documento
+                    var tipoDocumento = await context.tiposDocumento.Where(x => x.Id.Equals(registrarEmpresas.TipoDocumento)).FirstOrDefaultAsync();
+
+                    if (tipoDocumento == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Registrar empresa",
+                            status = 404,
+                            message = "Tipo documento no encontrado"
+                        });
+                    }
+
+                    //Consulta tipo empresa
+                    var tipoEmpresa = await context.tiposEmpresas.Where(x => x.Id.Equals(registrarEmpresas.IdTipoEmpresa)).FirstOrDefaultAsync();
+
+                    if (tipoEmpresa == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Registrar empresa",
+                            status = 404,
+                            message = "Tipo empresa no encontrado"
+                        });
+                    }
+
+                    //Mapeo de datos en clases
+                    var empresa = mapper.Map<Empresas>(registrarEmpresas);
+                    //Valores asignados
+                    empresa.Id = Guid.NewGuid().ToString();
+                    empresa.TipoDocumento = registrarEmpresas.TipoDocumento;
+                    empresa.Documento = registrarEmpresas.Documento;
+                    empresa.Nombre = registrarEmpresas.Nombre;
+                    empresa.Descripcion = registrarEmpresas.Descripcion;
+                    empresa.IdTipoEmpresa = registrarEmpresas.IdTipoEmpresa;
+                    empresa.DigitoVerificacion = registrarEmpresas.DigitoVerificacion;
+                    empresa.IdEstado = estados.Id;
+                    empresa.UsuarioRegistro = usuario.Document;
+                    empresa.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
+                    empresa.FechaModifico = null;
+                    empresa.UsuarioModifico = null;
+
+                    //Agregar datos al contexto
+                    context.Add(empresa);
+                    //Guardado de datos 
+                    await context.SaveChangesAsync();
+
+                    return Created("", new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Registrar empresa",
+                        status = 201,
+                        message = "Empresa creada"
+                    });
+                }
+                else
+                {
+                    return BadRequest(new General()
                     {
                         title = "Registrar empresa",
-                        status = 404,
-                        message = "Tipo documento no encontrado"
+                        status = 400,
+                        message = "No tiene permisos para registrar empresas"
                     });
                 }
-
-                //Consulta tipo empresa
-                var tipoEmpresa = await context.tiposEmpresas.Where(x => x.Id.Equals(registrarEmpresas.IdTipoEmpresa)).FirstOrDefaultAsync();
-
-                if (tipoEmpresa == null)
-                {
-                    return NotFound(new General()
-                    {
-                        title = "Registrar empresa",
-                        status = 404,
-                        message = "Tipo empresa no encontrado"
-                    });
-                }
-
-                //Mapeo de datos en clases
-                var empresa = mapper.Map<Empresas>(registrarEmpresas);
-                //Valores asignados
-                empresa.Id = Guid.NewGuid().ToString();
-                empresa.TipoDocumento = registrarEmpresas.TipoDocumento;
-                empresa.Documento = registrarEmpresas.Documento;
-                empresa.Nombre = registrarEmpresas.Nombre;
-                empresa.Descripcion = registrarEmpresas.Descripcion;
-                empresa.IdTipoEmpresa = registrarEmpresas.IdTipoEmpresa;
-                empresa.DigitoVerificacion = registrarEmpresas.DigitoVerificacion;
-                empresa.IdEstado = estados.Id;
-                empresa.UsuarioRegistro = usuario.Document;
-                empresa.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
-                empresa.FechaModifico = null;
-                empresa.UsuarioModifico = null;
-
-                //Agregar datos al contexto
-                context.Add(empresa);
-                //Guardado de datos 
-                await context.SaveChangesAsync();
-
-                return Created("", new General()
-                {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Registrar empresa",
-                    status = 201,
-                    message = "Empresa creada"
-                }); ;
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Registrar empresa " + ex.Message.ToString());
+                logger.LogError("Registrar empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Registrar empresa",
@@ -243,10 +351,10 @@ namespace SIRPSI.Controllers.Companies
         }
         #endregion
 
-        #region Editar
-        [HttpPut("EditarEmpresa")]
+        #region Actualizar
+        [HttpPut("ActualizarEmpresa")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Put(EditarEmpresas editarEmpresas)
+        public async Task<ActionResult> Put(ActualizarEmpresas actualizarEmpresas)
         {
             try
             {
@@ -258,7 +366,12 @@ namespace SIRPSI.Controllers.Companies
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -266,87 +379,136 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Editar empresa",
+                        title = "Actualizar empresa",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
 
-                //Consulta tipo documento
-                var tipoDocumento = await context.tiposDocumento.Where(x => x.Id.Equals(editarEmpresas.TipoDocumento)).FirstOrDefaultAsync();
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                if (tipoDocumento == null)
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar empresa",
+                        title = "Actualizar empresas",
                         status = 404,
-                        message = "Tipo documento no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Consulta tipo empresa
-                var tipoEmpresa = await context.tiposEmpresas.Where(x => x.Id.Equals(editarEmpresas.IdTipoEmpresa)).FirstOrDefaultAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                if (tipoEmpresa == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Actualizar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    return NotFound(new General()
+                    //Consulta tipo documento
+                    var tipoDocumento = await context.tiposDocumento.Where(x => x.Id.Equals(actualizarEmpresas.TipoDocumento)).FirstOrDefaultAsync();
+
+                    if (tipoDocumento == null)
                     {
-                        title = "Registrar empresa",
-                        status = 404,
-                        message = "Tipo empresa no encontrado"
-                    });
-                }
+                        return NotFound(new General()
+                        {
+                            title = "Actualizar empresa",
+                            status = 404,
+                            message = "Tipo documento no encontrado"
+                        });
+                    }
 
-                //Consulta de empresa del usuario
-                var existe = await context.empresas.Where(x => x.Id.Equals(editarEmpresas.Id)).FirstOrDefaultAsync();
+                    //Consulta tipo empresa
+                    var tipoEmpresa = await context.tiposEmpresas.Where(x => x.Id.Equals(actualizarEmpresas.IdTipoEmpresa)).FirstOrDefaultAsync();
 
-                if (existe == null)
-                {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    return NotFound(new
+                    if (tipoEmpresa == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Actualizar empresa",
+                            status = 404,
+                            message = "Tipo empresa no encontrado"
+                        });
+                    }
+
+                    //Consulta de empresa del usuario
+                    var existe = await context.empresas.Where(x => x.Id.Equals(actualizarEmpresas.Id)).FirstOrDefaultAsync();
+
+                    if (existe == null)
                     {
                         //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Editar empresa",
-                        status = 404,
-                        message = "Empresa no encontrada"
+                        return NotFound(new
+                        {
+                            //Visualizacion de mensajes al usuario del aplicativo
+                            title = "Actualizar empresa",
+                            status = 404,
+                            message = "Empresa no encontrada"
+                        });
+                    }
+                    //Consulta de estados
+                    var estados = await context.estados.ToListAsync();
+                    //Registro de datos
+                    context.empresas.Where(x => x.Id.Equals(existe.Id)).ToList()
+                        .ForEach(r =>
+                        {
+                            r.TipoDocumento = actualizarEmpresas.TipoDocumento;
+                            r.Documento = actualizarEmpresas.Documento != null ? actualizarEmpresas.Documento : "";
+                            r.Nombre = actualizarEmpresas.Nombre != null ? actualizarEmpresas.Nombre : "";
+                            r.Descripcion = actualizarEmpresas.Descripcion != null ? actualizarEmpresas.Descripcion : "";
+                            r.IdTipoEmpresa = actualizarEmpresas.IdTipoEmpresa;
+                            r.DigitoVerificacion = actualizarEmpresas.DigitoVerificacion;
+                            r.UsuarioModifico = usuario.Document;
+                            r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
+                        });
+                    //Guardado de datos
+                    await context.SaveChangesAsync();
+
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Actualizar empresa",
+                        status = 200,
+                        message = "Empresa actualizada"
                     });
                 }
-                //Consulta de estados
-                var estados = await context.estados.ToListAsync();
-                //Registro de datos
-                context.empresas.Where(x => x.Id.Equals(existe.Id)).ToList()
-                    .ForEach(r =>
-                    {
-                        r.TipoDocumento = editarEmpresas.TipoDocumento;
-                        r.Documento = editarEmpresas.Documento != null ? editarEmpresas.Documento : "";
-                        r.Nombre = editarEmpresas.Nombre != null ? editarEmpresas.Nombre : "";
-                        r.Descripcion = editarEmpresas.Descripcion != null ? editarEmpresas.Descripcion : "";
-                        r.IdTipoEmpresa = editarEmpresas.IdTipoEmpresa;
-                        r.DigitoVerificacion = editarEmpresas.DigitoVerificacion;
-                        r.UsuarioModifico = usuario.Document;
-                        r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
-                    });
-                //Guardado de datos
-                await context.SaveChangesAsync();
-
-                return Ok(new General()
+                else
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Editar empresa",
-                    status = 200,
-                    message = "Empresa actualizada"
-                });
+                    return BadRequest(new General()
+                    {
+                        title = "Actualizar empresa",
+                        status = 400,
+                        message = "No tiene permisos para actualizar empresas"
+                    });
+                }
             }
             catch (Exception ex)
             {
-                logger.LogError("Editar empresa " + ex.Message.ToString());
+                logger.LogError("Actualizar empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Editar empresa",
+                    title = "Actualizar empresa",
                     status = 400,
                     message = ""
-                }); ;
+                }); 
             }
         }
         #endregion
@@ -366,7 +528,12 @@ namespace SIRPSI.Controllers.Companies
                     IEnumerable<Claim> claims = identity.Claims;
                 }
 
+                //Consulta el documento con los claims
                 var documento = identity.FindFirst("documento").Value.ToString();
+
+                //Consulta el rol con los claims
+                var roles = identity.FindFirst("rol").Value.ToString();
+
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
@@ -379,34 +546,74 @@ namespace SIRPSI.Controllers.Companies
                         message = "Usuario no encontrado"
                     });
                 }
-                //Consulta estados
-                var estados = await context.estados.ToListAsync();
 
-                if (estados == null)
+                //Obtiene la url del servicio
+                string getUrl = HttpContext.Request.GetDisplayUrl();
+
+                //Consulta de roles por id de usuario
+
+                var rolesList = new List<string>();
+
+                //Verifica los roles
+                var list = roles.Split(',').ToList();
+
+                foreach (var i in list)
+                {
+                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+                    if (result != null)
+                    {
+                        rolesList.Add(result.ToString());
+                    }
+                }
+
+                if (rolesList == null)
                 {
                     return NotFound(new General()
                     {
                         title = "Eliminar empresa",
                         status = 404,
-                        message = "Estados no encontrado"
+                        message = "Roles no encontrados"
                     });
                 }
 
-                //Consulta de empresa
-                var existe = await context.empresas.Where(x => x.Id.Equals(eliminarEmpresas.Id)).FirstOrDefaultAsync();
+                //Revisa los permisos de usuario
+                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                if (existe == null)
+                //Consulta si tiene el permiso
+                var permitido = permisos.Select(x => x.Eliminar.Equals(true)).FirstOrDefault();
+
+                //Si es permitido
+                if (permitido == true)
                 {
-                    return NotFound(new General()
-                    {
-                        title = "Eliminar empresa",
-                        status = 404,
-                        message = "Empresa no encontrada"
-                    });
-                }
+                    //Consulta estados
+                    var estados = await context.estados.ToListAsync();
 
-                //Agregar datos al contexto
-                context.empresas.Where(x => x.Id.Equals(eliminarEmpresas.Id)).ToList()
+                    if (estados == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar empresa",
+                            status = 404,
+                            message = "Estados no encontrado"
+                        });
+                    }
+
+                    //Consulta de empresa
+                    var existe = await context.empresas.Where(x => x.Id.Equals(eliminarEmpresas.Id)).FirstOrDefaultAsync();
+
+                    if (existe == null)
+                    {
+                        return NotFound(new General()
+                        {
+                            title = "Eliminar empresa",
+                            status = 404,
+                            message = "Empresa no encontrada"
+                        });
+                    }
+
+                    //Agregar datos al contexto
+                    context.empresas.Where(x => x.Id.Equals(eliminarEmpresas.Id)).ToList()
                   .ForEach(r =>
                   {
                       r.IdEstado = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
@@ -414,21 +621,31 @@ namespace SIRPSI.Controllers.Companies
                       r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
                   });
 
-                //Se elimina el regitro de forma logica
-                await context.SaveChangesAsync();
+                    //Se elimina el regitro de forma logica
+                    await context.SaveChangesAsync();
 
-                return Ok(new General()
+                    return Ok(new General()
+                    {
+                        //Visualizacion de mensajes al usuario del aplicativo
+                        title = "Eliminar empresa",
+                        status = 200,
+                        message = "Empresa eliminada"
+                    });
+                }
+                else
                 {
-                    //Visualizacion de mensajes al usuario del aplicativo
-                    title = "Eliminar empresa",
-                    status = 200,
-                    message = "Empresa eliminada"
-                });
+                    return BadRequest(new General()
+                    {
+                        title = "Eliminar empresa",
+                        status = 400,
+                        message = "No tiene permisos para eliminar empresas"
+                    });
+                }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Eliminar empresa " + ex.Message.ToString());
+                logger.LogError("Eliminar empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
                     title = "Eliminar empresa",

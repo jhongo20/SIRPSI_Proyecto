@@ -2,7 +2,7 @@
 
 namespace SIRPSI.DTOs.User.RolesUsuario
 {
-    public class EditarRolesUsuario
+    public class ActualizarRolesUsuario
     {
         [Required(ErrorMessage = "El campo {0} es requerido")]
         public string? Id { get; set; }

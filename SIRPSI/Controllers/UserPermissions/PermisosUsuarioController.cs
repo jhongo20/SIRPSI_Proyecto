@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using DataAccess.Context;
-using DataAccess.Models.Companies;
+using DataAccess.Models.Estados;
+using DataAccess.Models.Permissions;
 using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -11,16 +12,19 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SIRPSI.Core.Helper;
-using SIRPSI.DTOs.Companies;
+using SIRPSI.DTOs.Document;
+using SIRPSI.DTOs.Status;
+using SIRPSI.DTOs.UserPermissions;
 using SIRPSI.Helpers.Answers;
 using System.Security.Claims;
 
-namespace SIRPSI.Controllers.Companies
+namespace SIRPSI.Controllers.UserPermissions
 {
-    [Route("api/tiposempresa")]
+    [Route("api/permisosusuario")]
     [ApiController]
-    public class TiposEmpresaController : ControllerBase
+    public class PermisosUsuarioController : ControllerBase
     {
+
         #region Dependencias
         private readonly UserManager<IdentityUser> userManager;
         private readonly AppDbContext context;
@@ -31,7 +35,7 @@ namespace SIRPSI.Controllers.Companies
         private readonly IEmailSender emailSender;
 
         //Constructor 
-        public TiposEmpresaController(AppDbContext context,
+        public PermisosUsuarioController(AppDbContext context,
             IConfiguration configuration,
             UserManager<IdentityUser> userManager,
             SignInManager<IdentityUser> signInManager,
@@ -50,9 +54,9 @@ namespace SIRPSI.Controllers.Companies
         #endregion
 
         #region Consulta
-        [HttpGet("ConsultarTipoEmpresa", Name = "consultarTiposEmpresa")]
+        [HttpGet("ConsultarPermisosUsuario", Name = "consultarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarTipoEmpresa consultarTipoEmpresa)
+        public async Task<ActionResult<object>> Get()
         {
             try
             {
@@ -77,7 +81,7 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Consultar tipo empresas",
+                        title = "Consultar permisos usuario",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
@@ -106,86 +110,80 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Consultar tipo empresa",
+                        title = "Consultar permisos usuario",
                         status = 404,
                         message = "Roles no encontrados"
                     });
                 }
+
                 //Revisa los permisos de usuario
                 var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
-                
+
                 //Consulta si tiene el permiso
                 var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
-                
                 //Si es permitido
                 if (permitido == true)
                 {
 
-                    //Consultar estados
-                    var estado = await context.estados.Where(x => x.Id.Equals(consultarTipoEmpresa.IdEstado)).FirstOrDefaultAsync();
+                    var estados = await context.estados.Select(x => new { x.Id, x.IdConsecutivo }).Where(x => x.IdConsecutivo.Equals(1) || x.IdConsecutivo.Equals(2)).Select(x => x.Id).ToListAsync();
 
-                    if (estado == null)
+                    //Consulta el permisos
+                    var permisosUsuario = await context.permisosXUsuario.Where(x => x.IdUsuario.Equals(usuario.Id) && estados.Contains(x.IdEstado)).Select(x => new ConsultarPermisosUsuario
                     {
-                        return NotFound(new General()
-                        {
-                            title = "Consultar tipo empresas",
-                            status = 404,
-                            message = "Estado no encontrado"
-                        });
-                    }
+                        Id = x.Id,
+                        Vista = x.Vista,
+                        IdUsuario = x.IdUsuario,
+                        IdEmpresa = x.IdEmpresa,
+                        Consulta = x.Consulta,
+                        Registrar = x.Registrar,
+                        Actualizar = x.Actualizar,
+                        Reportes = x.Reportes,
+                        Eliminar = x.Eliminar,
+                        IdEstado = x.IdEstado
+                    }).ToListAsync();
 
-                    //Consulta el tipo empresa
-                    var tipoEmpresa = context.tiposEmpresas.Where(x => x.IdEstado.Equals(estado.Id)).Select(x => new
-                    {
-                        x.Id,
-                        x.Nombre,
-                        x.Descripcion,
-                        x.IdEstado
-                    }).ToList();
-
-                    if (tipoEmpresa == null)
+                    if (permisosUsuario == null)
                     {
                         //Visualizacion de mensajes al usuario del aplicativo
                         return NotFound(new General()
                         {
-                            title = "Consultar tipo empresa",
+                            title = "Consultar permisos usuario",
                             status = 404,
-                            message = "Tipo empresa no encontrada"
+                            message = "Permisos no encontrados"
                         });
                     }
 
                     //Retorno de los datos encontrados
-                    return tipoEmpresa;
+                    return permisosUsuario;
                 }
                 else
                 {
                     return BadRequest(new General()
                     {
-                        title = "Consultar tipo empresa",
+                        title = "Consultar permisos usuario",
                         status = 400,
-                        message = "No tiene permisos para consultar tipos de empresa"
+                        message = "No tiene permisos para consultar permisos por usuario"
                     });
                 }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Consultar tipo empresa" + ex.Message.ToString() + " - " + ex.StackTrace);
+                logger.LogError("Consultar permisos usuario " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Consultar tipo empresa",
+                    title = "Consultar permisos usuario",
                     status = 400,
                     message = "Contacte con el administrador del sistema"
                 });
             }
         }
-
         #endregion
 
         #region Registro
-        [HttpPost("RegistrarTipoEmpresa")]
+        [HttpPost("RegistrarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Post([FromBody] RegistrarTipoEmpresa registrarTipoEmpresa)
+        public async Task<ActionResult> Post([FromBody] RegistrarPermisosUsuario registrarPermisosUsuario)
         {
             try
             {
@@ -203,14 +201,14 @@ namespace SIRPSI.Controllers.Companies
                 //Consulta el rol con los claims
                 var roles = identity.FindFirst("rol").Value.ToString();
 
-                //Consulta de usuarios por documento
+                //Consulta de usuarios
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
                 if (usuario == null)
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar tipo empresa",
+                        title = "Registrar permisos usuario",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
@@ -220,7 +218,6 @@ namespace SIRPSI.Controllers.Companies
                 string getUrl = HttpContext.Request.GetDisplayUrl();
 
                 //Consulta de roles por id de usuario
-
                 var rolesList = new List<string>();
 
                 //Verifica los roles
@@ -240,7 +237,7 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Registrar tipo empresa",
+                        title = "Registrar permisos usuario",
                         status = 404,
                         message = "Roles no encontrados"
                     });
@@ -250,67 +247,57 @@ namespace SIRPSI.Controllers.Companies
                 var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
                 //Consulta si tiene el permiso
-                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();
+                var permitido = permisos.Select(x => x.Registrar.Equals(true)).FirstOrDefault();              
 
                 //Si es permitido
                 if (permitido == true)
                 {
-
-                    //Consulta de estados
-                    var estado = await context.estados.Where(x => x.Id.Equals(registrarTipoEmpresa.IdEstado)).FirstOrDefaultAsync();
-
-                    if (estado == null)
-                    {
-                        return NotFound(new General()
-                        {
-                            title = "Registrar tipo empresa",
-                            status = 404,
-                            message = "Estado no encontrado"
-                        });
-                    }
-
                     //Mapeo de datos en clases
-                    var tipoEmpresa = mapper.Map<TiposEmpresa>(registrarTipoEmpresa);
-                    //Valores asignados
-                    tipoEmpresa.Id = Guid.NewGuid().ToString();
-                    tipoEmpresa.Nombre = registrarTipoEmpresa.Nombre;
-                    tipoEmpresa.Descripcion = registrarTipoEmpresa.Descripcion;
-                    tipoEmpresa.IdEstado = estado.Id;
-                    tipoEmpresa.UsuarioRegistro = usuario.Document;
-                    tipoEmpresa.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
-                    tipoEmpresa.FechaModifico = null;
-                    tipoEmpresa.UsuarioModifico = null;
+                    var permisosUsuario = mapper.Map<PermisosXUsuario>(registrarPermisosUsuario);
 
+                    //Valores asignados
+                    permisosUsuario.Id = Guid.NewGuid().ToString();
+                    permisosUsuario.Vista = registrarPermisosUsuario.Vista;
+                    permisosUsuario.IdUsuario = registrarPermisosUsuario.IdUsuario;
+                    permisosUsuario.IdEmpresa = registrarPermisosUsuario.IdEmpresa;
+                    permisosUsuario.Consulta = registrarPermisosUsuario.Consulta;
+                    permisosUsuario.Actualizar = registrarPermisosUsuario.Actualizar;
+                    permisosUsuario.Registrar = registrarPermisosUsuario.Registrar;
+                    permisosUsuario.Eliminar = registrarPermisosUsuario.Eliminar;
+                    permisosUsuario.IdEstado = registrarPermisosUsuario.IdEstado;
+                    permisosUsuario.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
+                    permisosUsuario.UsuarioRegistro = usuario.Document;
+ 
                     //Agregar datos al contexto
-                    context.Add(tipoEmpresa);
+                    context.Add(permisosUsuario);
                     //Guardado de datos 
                     await context.SaveChangesAsync();
 
                     return Created("", new General()
                     {
                         //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Registrar tipo empresa",
+                        title = "Registrar permisos usuario",
                         status = 201,
-                        message = "Tipo empresa creada"
+                        message = "Permisos usuario creado"
                     });
                 }
                 else
                 {
                     return BadRequest(new General()
                     {
-                        title = "Registrar tipo empresa",
+                        title = "Registrar permisos usuario",
                         status = 400,
-                        message = "No tiene permisos de registrar tipos de empresa"
+                        message = "No tiene permisos para registrar permisos por usuario"
                     });
                 }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Registrar tipo empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
+                logger.LogError("Registrar permisos usuario" + ex.Message.ToString() + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Registrar tipo empresa",
+                    title = "Registrar permisos usuario",
                     status = 400,
                     message = "Contacte con el administrador del sistema"
                 });
@@ -319,9 +306,9 @@ namespace SIRPSI.Controllers.Companies
         #endregion
 
         #region Actualizar
-        [HttpPut("ActualizarTipoEmpresa")]
+        [HttpPut("ActualizarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Put(ActualizarTipoEmpresa actualizarTipoEmpresa)
+        public async Task<ActionResult> Put(ActualizarPermisosUsuario actualizarPermisosUsuario)
         {
             try
             {
@@ -346,7 +333,7 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Actualizar tipo empresa",
+                        title = "Actualizar permisos usuario",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
@@ -376,7 +363,7 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Actualizar tipo empresa",
+                        title = "Actualizar permisos usuario",
                         status = 404,
                         message = "Roles no encontrados"
                     });
@@ -391,68 +378,75 @@ namespace SIRPSI.Controllers.Companies
                 //Si es permitido
                 if (permitido == true)
                 {
-                    //Consulta de empresa del usuario
-                    var existe = await context.tiposEmpresas.Where(x => x.Id.Equals(actualizarTipoEmpresa.Id)).FirstOrDefaultAsync();
+                    //Consulta de estados de usuario
+                    var existeEstado = await context.estados.Where(x => x.Id.Equals(actualizarPermisosUsuario.IdEstado)).FirstOrDefaultAsync();
 
-                    if (existe == null)
+                    if (existeEstado == null)
                     {
                         return NotFound(new
                         {
                             //Visualizacion de mensajes al usuario del aplicativo
-                            title = "Actualizar tipo empresa",
+                            title = "Actualizar permisos usuario",
                             status = 404,
-                            message = "Tipo empresa no encontrada"
+                            message = "Estado no encontrado"
                         });
                     }
 
                     //Registro de datos
-                    context.tiposEmpresas.Where(x => x.Id.Equals(existe.Id)).ToList()
-                        .ForEach(r =>
+                    context.permisosXUsuario.Where(x => x.Id.Equals(actualizarPermisosUsuario.Id)).ToList()
+                        .ForEach(e =>
                         {
-                            r.Nombre = actualizarTipoEmpresa.Nombre;
-                            r.Descripcion = actualizarTipoEmpresa.Descripcion;
-                            r.UsuarioModifico = usuario.Document;
-                            r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
+                            e.Vista = actualizarPermisosUsuario.Vista;
+                            e.IdUsuario = actualizarPermisosUsuario.IdUsuario;
+                            e.IdEmpresa = actualizarPermisosUsuario.IdEmpresa;
+                            e.Consulta = actualizarPermisosUsuario.Consulta;
+                            e.Actualizar = actualizarPermisosUsuario.Actualizar;
+                            e.Registrar = actualizarPermisosUsuario.Registrar;
+                            e.Eliminar = actualizarPermisosUsuario.Eliminar;
+                            e.Reportes = actualizarPermisosUsuario.Reportes;
+                            e.UsuarioModifico = usuario.Document;
+                            e.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
                         });
+
                     //Guardado de datos
                     await context.SaveChangesAsync();
 
                     return Ok(new General()
                     {
                         //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Actualizar tipo empresa",
+                        title = "Actualizar permisos usuario",
                         status = 200,
-                        message = "Tipo empresa actualizada"
+                        message = "Permisos usuario actualizado"
                     });
                 }
                 else
                 {
                     return BadRequest(new General()
                     {
-                        title = "Actualizar tipo empresa",
+                        title = "Actualizar permisos usuario",
                         status = 400,
-                        message = "No tiene permisos para actualizar tipos de empresa"
+                        message = "No tiene permisos para actualizar permisos por usuario"
                     });
                 }
-
             }
             catch (Exception ex)
             {
-                logger.LogError("Actualizar tipo empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
+                //Registro de errores
+                logger.LogError("Actualizar permisos usuario " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Actualizar tipo empresa",
+                    title = "Actualizar permisos usuario",
                     status = 400,
-                    message = ""
-                }); ;
+                    message = "Contacte con el administrador del sistema"
+                });
             }
         }
         #endregion
 
         #region Eliminar
-        [HttpDelete("EliminarTipoEmpresa")]
+        [HttpDelete("EliminarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult> Delete([FromBody] EliminarTipoEmpresa eliminarTipoEmpresa)
+        public async Task<ActionResult> Delete([FromBody] EliminarPermisosUsuario eliminarPermisosUsuario)
         {
             try
             {
@@ -477,11 +471,12 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Eliminar tipo empresa",
+                        title = "Eliminar permisos usuario",
                         status = 404,
                         message = "Usuario no encontrado"
                     });
                 }
+
                 //Obtiene la url del servicio
                 string getUrl = HttpContext.Request.GetDisplayUrl();
 
@@ -506,7 +501,7 @@ namespace SIRPSI.Controllers.Companies
                 {
                     return NotFound(new General()
                     {
-                        title = "Eliminar tipo empresa",
+                        title = "Eliminar permisos usuario",
                         status = 404,
                         message = "Roles no encontrados"
                     });
@@ -528,33 +523,33 @@ namespace SIRPSI.Controllers.Companies
                     {
                         return NotFound(new General()
                         {
-                            title = "Eliminar tipo empresa",
+                            title = "Eliminar permisos usuario",
                             status = 404,
                             message = "Estados no encontrados"
                         });
                     }
 
                     //Consulta de empresa
-                    var existe = await context.tiposEmpresas.Where(x => x.Id.Equals(eliminarTipoEmpresa.Id)).FirstOrDefaultAsync();
+                    var existe = await context.permisosXUsuario.Where(x => x.Id.Equals(eliminarPermisosUsuario.Id)).FirstOrDefaultAsync();
 
                     if (existe == null)
                     {
                         return NotFound(new General()
                         {
-                            title = "Eliminar tipo empresa",
+                            title = "Eliminar permisos usuario",
                             status = 404,
-                            message = "Tipo empresa no encontrada"
+                            message = "Permisos usuario no encontrado"
                         });
                     }
 
                     //Agregar datos al contexto
-                    context.tiposEmpresas.Where(x => x.Id.Equals(eliminarTipoEmpresa.Id)).ToList()
-                  .ForEach(r =>
-                  {
-                      r.IdEstado = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
-                      r.UsuarioModifico = usuario.Document;
-                      r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
-                  });
+                    context.permisosXUsuario.Where(x => x.Id.Equals(eliminarPermisosUsuario.Id)).ToList()
+                      .ForEach(r =>
+                      {
+                          r.IdEstado = estados.Where(x => x.IdConsecutivo.Equals(2)).Select(x => x.Id).First();
+                          r.UsuarioModifico = usuario.Document;
+                          r.FechaModifico = DateTime.Now.ToDateTimeZone().DateTime;
+                      });
 
                     //Se elimina el regitro de forma logica
                     await context.SaveChangesAsync();
@@ -562,28 +557,28 @@ namespace SIRPSI.Controllers.Companies
                     return Ok(new General()
                     {
                         //Visualizacion de mensajes al usuario del aplicativo
-                        title = "Eliminar tipo empresa",
+                        title = "Eliminar permisos usuario",
                         status = 200,
-                        message = "Tipo empresa eliminada"
+                        message = "Permisos usuario eliminado" 
                     });
                 }
                 else
                 {
                     return BadRequest(new General()
                     {
-                        title = "Eliminar tipo empresa",
+                        title = "Eliminar permisos usuario",
                         status = 400,
-                        message = "No tiene permisos de eliminar tipos de empresas"
+                        message = "No tiene permisos para eliminar permisos de usuario"
                     });
                 }
             }
             catch (Exception ex)
             {
                 //Registro de errores
-                logger.LogError("Eliminar tipo empresa " + ex.Message.ToString() + " - " + ex.StackTrace);
+                logger.LogError("Eliminar permisos usuario " + ex.Message.ToString() + " - " + ex.StackTrace);
                 return BadRequest(new General()
                 {
-                    title = "Eliminar tipo empresa",
+                    title = "Eliminar permisos usuario",
                     status = 400,
                     message = "Contacte con el administrador del sistema"
                 });
