@@ -10,6 +10,10 @@ namespace SIRPSI.DTOs.Companies
         public string? IdTipoEmpresa { get; set; }
         public string? Documento { get; set; }
         public string? Nombre { get; set; }
+        public string IdMinisterio { get; set; }
         public string? IdEstado { get; set; }
+        public DateTime? FechaRegistro { get; set; }
+        public DateTime? FechaModifico { get; set; }
+
     }
 }

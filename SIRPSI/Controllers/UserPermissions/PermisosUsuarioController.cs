@@ -16,6 +16,7 @@ using SIRPSI.DTOs.Document;
 using SIRPSI.DTOs.Status;
 using SIRPSI.DTOs.UserPermissions;
 using SIRPSI.Helpers.Answers;
+using System.IO;
 using System.Security.Claims;
 
 namespace SIRPSI.Controllers.UserPermissions
@@ -88,7 +89,10 @@ namespace SIRPSI.Controllers.UserPermissions
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1)); 
 
                 //Consulta de roles por id de usuario
 
@@ -181,7 +185,7 @@ namespace SIRPSI.Controllers.UserPermissions
         #endregion
 
         #region Registro
-        [HttpPost("RegistrarPermisosUsuario")]
+        [HttpPost("RegistrarPermisosUsuario", Name = "registrarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult> Post([FromBody] RegistrarPermisosUsuario registrarPermisosUsuario)
         {
@@ -215,7 +219,10 @@ namespace SIRPSI.Controllers.UserPermissions
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
                 var rolesList = new List<string>();
@@ -306,7 +313,7 @@ namespace SIRPSI.Controllers.UserPermissions
         #endregion
 
         #region Actualizar
-        [HttpPut("ActualizarPermisosUsuario")]
+        [HttpPut("ActualizarPermisosUsuario", Name = "actualizarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult> Put(ActualizarPermisosUsuario actualizarPermisosUsuario)
         {
@@ -340,7 +347,10 @@ namespace SIRPSI.Controllers.UserPermissions
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -444,7 +454,7 @@ namespace SIRPSI.Controllers.UserPermissions
         #endregion
 
         #region Eliminar
-        [HttpDelete("EliminarPermisosUsuario")]
+        [HttpDelete("eliminarPermisosUsuario", Name = "eliminarPermisosUsuario")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult> Delete([FromBody] EliminarPermisosUsuario eliminarPermisosUsuario)
         {
@@ -478,7 +488,10 @@ namespace SIRPSI.Controllers.UserPermissions
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 

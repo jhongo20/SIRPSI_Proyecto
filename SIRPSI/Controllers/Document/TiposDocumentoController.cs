@@ -54,8 +54,7 @@ namespace SIRPSI.Controllers.Document
 
         #region Consulta
         [HttpGet("ConsultarTipoDocumento", Name = "consultarTipoDocumento")]
-        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarTiposDocumento consultarTiposDocumento)
+        public async Task<ActionResult<object>> Get()
         {
             try
             {
@@ -68,62 +67,62 @@ namespace SIRPSI.Controllers.Document
                 }
 
                 //Consulta el documento con los claims
-                var documento = identity.FindFirst("documento").Value.ToString();
+                //var documento = identity.FindFirst("documento").Value.ToString();
 
-                //Consulta el rol con los claims
-                var roles = identity.FindFirst("rol").Value.ToString();
+                ////Consulta el rol con los claims
+                //var roles = identity.FindFirst("rol").Value.ToString();
 
-                var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
+                //var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
-                if (usuario == null)
-                {
-                    return NotFound(new General()
-                    {
-                        title = "Consultar tipo documento",
-                        status = 404,
-                        message = "Usuario no encontrado"
-                    });
-                }
+                //if (usuario == null)
+                //{
+                //    return NotFound(new General()
+                //    {
+                //        title = "Consultar tipo documento",
+                //        status = 404,
+                //        message = "Usuario no encontrado"
+                //    });
+                //}
 
-                //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                ////Obtiene la url del servicio
+                //string getUrl = HttpContext.Request.GetDisplayUrl();
 
-                //Consulta de roles por id de usuario
+                ////Consulta de roles por id de usuario
 
-                var rolesList = new List<string>();
-                //Verifica los roles
-                var list = roles.Split(',').ToList();
+                //var rolesList = new List<string>();
+                ////Verifica los roles
+                //var list = roles.Split(',').ToList();
 
-                foreach (var i in list)
-                {
-                    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+                //foreach (var i in list)
+                //{
+                //    var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
 
-                    if (result != null)
-                    {
-                        rolesList.Add(result.ToString());
-                    }
-                }
+                //    if (result != null)
+                //    {
+                //        rolesList.Add(result.ToString());
+                //    }
+                //}
 
-                if (rolesList == null)
-                {
-                    return NotFound(new General()
-                    {
-                        title = "Consultar tipo documento",
-                        status = 404,
-                        message = "Roles no encontrados"
-                    });
-                }
-                //Revisa los permisos de usuario
-                var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
+                //if (rolesList == null)
+                //{
+                //    return NotFound(new General()
+                //    {
+                //        title = "Consultar tipo documento",
+                //        status = 404,
+                //        message = "Roles no encontrados"
+                //    });
+                //}
+                ////Revisa los permisos de usuario
+                //var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
 
-                //Consulta si tiene el permiso
-                var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
+                ////Consulta si tiene el permiso
+                //var permitido = permisos.Select(x => x.Consulta.Equals(true)).FirstOrDefault();
 
                 //Si es permitido
-                if (permitido == true)
-                {
+                //if (permitido == true)
+                //{
                     //Consultar estados
-                    var estado = await context.estados.Where(x => x.Id.Equals(consultarTiposDocumento.IdEstado)).FirstOrDefaultAsync();
+                    var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
                     if (estado == null)
                     {
@@ -156,16 +155,16 @@ namespace SIRPSI.Controllers.Document
 
                     //Retorno de los datos encontrados
                     return tipoEmpresa;
-                }
-                else
-                {
-                    return BadRequest(new General()
-                    {
-                        title = "Consultar tipo documento",
-                        status = 400,
-                        message = "No tiene permisos para consultar tipo documento"
-                    });
-                }
+                //}
+                //else
+                //{
+                //    return BadRequest(new General()
+                //    {
+                //        title = "Consultar tipo documento",
+                //        status = 400,
+                //        message = "No tiene permisos para consultar tipo documento"
+                //    });
+                //}
             }
             catch (Exception ex)
             {

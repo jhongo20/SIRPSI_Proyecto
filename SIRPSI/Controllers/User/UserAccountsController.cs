@@ -5,6 +5,7 @@ using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -26,6 +27,7 @@ namespace SIRPSI.Controllers.User
 {
     [Route("api/user")]
     [ApiController]
+    [EnableCors("CorsApi")]
     public class UserAccountsController : ControllerBase
     {
         #region Dependences
@@ -278,17 +280,6 @@ namespace SIRPSI.Controllers.User
         {
             try
             {
-                var existTypeDoc = await context.tiposDocumento.Where(x => x.Id.Equals(userCredentials.IdTypeDocument)).FirstOrDefaultAsync();
-
-                if (existTypeDoc == null)
-                {
-                    return BadRequest(new General()
-                    {
-                        title = "usuario",
-                        status = 400,
-                        message = "Tipo de documento NO existe."
-                    });
-                }
 
                 //Consulta estados
                 var estados = await context.estados.Select(x => new { x.Id, x.IdConsecutivo }).Where(x => x.IdConsecutivo.Equals(1) || x.IdConsecutivo.Equals(2)).Select(x => x.Id).ToListAsync();
@@ -305,15 +296,16 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-                var listEmpresasDb = existUser.IdCompany.Split(",").Select(x => x.Trim()).ToList();
+                            var listEmpresasDb = existUser.IdCompany.Split(",").Select(x => x.Trim()).ToList();
 
                 var contextListEmpresas = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id)).ToListAsync();
 
-                var dataEmpresa = contextListEmpresas.Where(x => x.Id.Equals(userCredentials.IdCompany)).FirstOrDefault();
+                var dataEmpresa = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id) && x.Documento.Equals(userCredentials.nit)).Select(x => x.Id).FirstOrDefaultAsync();
+
 
                 if (dataEmpresa != null)
                 {
-                    userCredentials.IdCompany = dataEmpresa.Id != null ? dataEmpresa.Id : "";
+                    userCredentials.IdCompany = dataEmpresa != null ? dataEmpresa : "";
                 }
                 else
                 {

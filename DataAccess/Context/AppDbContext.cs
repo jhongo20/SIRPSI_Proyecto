@@ -12,6 +12,9 @@ using DataAccess.Models.Documents;
 using DataAccess.Models.Users;
 using DataAccess.Models.Rols;
 using DataAccess.Models.Permissions;
+using DataAccess.Models.Ministry;
+using DataAccess.Models.Module;
+using DataAccess.Models.WorkPlace;
 
 namespace DataAccess.Context
 {
@@ -36,6 +39,9 @@ namespace DataAccess.Context
         public DbSet<Pais> pais { get; set; }
         public DbSet<TiposDocumento> tiposDocumento { get; set; }
         public DbSet<PermisosXUsuario> permisosXUsuario { get; set; }
+        public DbSet<Ministerio> ministerio { get; set; }
+        public DbSet<Modulo> modulo { get; set; }
+        public DbSet<CentroTrabajo> centroTrabajo { get; set; }
 
 
         //private void SeeData(ModelBuilder modelBuilder)

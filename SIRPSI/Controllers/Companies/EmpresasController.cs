@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SIRPSI.Core.Helper;
 using SIRPSI.DTOs.Companies;
+using SIRPSI.DTOs.Document;
 using SIRPSI.Helpers.Answers;
 using System.Security.Claims;
 
@@ -52,7 +53,7 @@ namespace SIRPSI.Controllers.Companies
         #region Consulta
         [HttpGet("ConsultarEmpresas", Name = "consultarEmpresas")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarEmpresas consultarEmpresas)
+        public async Task<ActionResult<object>> Get()
         {
             try
             {
@@ -84,7 +85,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -121,9 +125,10 @@ namespace SIRPSI.Controllers.Companies
                 if (permitido == true)
                 {
                     //Consulta estados
-                    var estados = await context.estados.Where(x => x.Id.Equals(consultarEmpresas.Id)).ToListAsync();
+                    var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
-                    if (estados == null)
+
+                    if (estado == null)
                     {
                         return NotFound(new General()
                         {
@@ -134,7 +139,7 @@ namespace SIRPSI.Controllers.Companies
                     }
 
                     //Consulta el empresa
-                    var empresa = context.empresas.Where(x => x.IdEstado.Equals(consultarEmpresas.IdEstado)).Select(x => new
+                    var empresa = context.empresas.Where(x => x.IdEstado.Equals(estado.Id)).Select(x => new
                     {
                         x.Id,
                         x.TipoDocumento,
@@ -142,7 +147,10 @@ namespace SIRPSI.Controllers.Companies
                         x.DigitoVerificacion,
                         x.IdTipoEmpresa,
                         x.Nombre,
-                        x.IdEstado
+                        x.IdMinisterio,
+                        x.IdEstado,
+                        x.FechaRegistro,
+                        x.FechaModifico
 
                     }).ToList();
 
@@ -220,7 +228,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -386,7 +397,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -548,7 +562,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 

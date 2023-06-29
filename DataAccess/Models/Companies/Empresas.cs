@@ -1,5 +1,7 @@
-﻿using System;
+﻿using DataAccess.Models.Ministry;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
@@ -10,6 +12,7 @@ namespace DataAccess.Models.Status
     [Table("Empresas", Schema = "sirpsi")]
     public partial class Empresas
     {
+        [Key]
         public string Id { get; set; } = null!;
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int IdConsecutivo { get; set; }
@@ -27,6 +30,11 @@ namespace DataAccess.Models.Status
         public string Descripcion { get; set; } = null!;
 
         public string? Observacion { get; set; }
+
+        public string IdMinisterio { get; set; }
+
+        [ForeignKey("Id")]
+        public Ministerio Ministerio { get; set; }
 
         public string? IdEstado { get; set; }
 

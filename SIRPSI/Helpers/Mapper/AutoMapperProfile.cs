@@ -3,20 +3,25 @@ using DataAccess.Models.Companies;
 using DataAccess.Models.Country;
 using DataAccess.Models.Documents;
 using DataAccess.Models.Estados;
+using DataAccess.Models.Ministry;
 using DataAccess.Models.Permissions;
 using DataAccess.Models.Rols;
 using DataAccess.Models.Status;
 using DataAccess.Models.Users;
+using DataAccess.Models.WorkPlace;
 using SIRPSI.DTOs.Companies;
 using SIRPSI.DTOs.Country;
 using SIRPSI.DTOs.Document;
+using SIRPSI.DTOs.Ministry;
 using SIRPSI.DTOs.Status;
 using SIRPSI.DTOs.User;
 using SIRPSI.DTOs.User.Roles;
 using SIRPSI.DTOs.User.RolesUsuario;
 using SIRPSI.DTOs.UserPermissions;
+using SIRPSI.DTOs.WorkPlace;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -88,6 +93,22 @@ namespace SIRPSI.Helpers
             CreateMap<TiposDocumento, RegistrarTipoDocumento>().ReverseMap();
             CreateMap<TiposDocumento, ActualizarTipoDocumento>().ReverseMap();
             CreateMap<TiposDocumento, EliminarTipoDocumento>().ReverseMap();
+            #endregion
+
+            #region Modulo
+
+            #endregion
+
+            #region Ministerios
+           
+            CreateMap<Ministerio, ConsultarMinisterios>().ReverseMap();
+            CreateMap<Ministerio, RegistrarMinisterio>().ReverseMap();
+
+            #endregion
+
+            #region Centros de trabajo
+            CreateMap<CentroTrabajo,ConsultarCentroTrabajo>().ReverseMap();
+            CreateMap<CentroTrabajo, RegistrarCentroTrabajo>().ReverseMap();
             #endregion
 
         }
