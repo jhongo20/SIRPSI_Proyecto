@@ -5,6 +5,7 @@ using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
@@ -20,6 +21,7 @@ namespace SIRPSI.Controllers.User
 {
     [Route("api/rolesusuario")]
     [ApiController]
+    [EnableCors("CorsApi")]
     public class RolesUsuarioController : ControllerBase
     {
         #region Dependencias

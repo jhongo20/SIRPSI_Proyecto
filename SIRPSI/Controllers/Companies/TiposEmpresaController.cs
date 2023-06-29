@@ -5,6 +5,7 @@ using EmailServices;
 using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +20,7 @@ namespace SIRPSI.Controllers.Companies
 {
     [Route("api/tiposempresa")]
     [ApiController]
+    [EnableCors("CorsApi")]
     public class TiposEmpresaController : ControllerBase
     {
         #region Dependencias
