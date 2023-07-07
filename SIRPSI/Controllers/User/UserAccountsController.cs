@@ -296,7 +296,7 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-                            var listEmpresasDb = existUser.IdCompany.Split(",").Select(x => x.Trim()).ToList();
+                var listEmpresasDb = existUser.IdCompany.Split(",").Select(x => x.Trim()).ToList();
 
                 var contextListEmpresas = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id)).ToListAsync();
 
