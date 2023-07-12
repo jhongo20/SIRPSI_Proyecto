@@ -6,6 +6,7 @@ using EvertecApi.Log4net;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,6 +16,7 @@ using SIRPSI.Core.Helper;
 using SIRPSI.DTOs.Companies;
 using SIRPSI.DTOs.User;
 using SIRPSI.DTOs.User.Roles;
+using SIRPSI.DTOs.User.Usuario;
 using SIRPSI.Helpers.Answers;
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
@@ -60,6 +62,7 @@ namespace SIRPSI.Controllers.User
 
         #region RegisterUser
         [HttpPost("RegisterUser")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
         public async Task<ActionResult<AuthenticationResponse>> Register(UserCredentials userCredentials)
         {
             try
@@ -111,6 +114,18 @@ namespace SIRPSI.Controllers.User
                         title = "usuario",
                         status = 400,
                         message = "Empresa NO existe."
+                    });
+                }
+
+                var existStatus = await context.estados.Where(x => x.Id.Equals(userCredentials.IdEstado)).FirstOrDefaultAsync();
+
+                if (existStatus == null)
+                {
+                    return BadRequest(new General()
+                    {
+                        title = "usuario",
+                        status = 400,
+                        message = "Estado NO existe."
                     });
                 }
 
@@ -167,7 +182,7 @@ namespace SIRPSI.Controllers.User
                     {
                         title = "usuario",
                         status = 400,
-                        message = "Registro de usuario ¡fallido!"
+                        message = "Registro de usuario ¡fallido!  " + result
                     });
                 }
 
@@ -208,6 +223,8 @@ namespace SIRPSI.Controllers.User
                 //Consulta de usuario
                 var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
 
+              
+
                 if (usuario == null)
                 {
                     return NotFound(new General()
@@ -215,6 +232,18 @@ namespace SIRPSI.Controllers.User
                         title = "Usuario",
                         status = 404,
                         message = "Usuario no encontrado"
+                    });
+                }
+
+                var usuarioLogin = context.AspNetUsers.Where(u => u.Id.Equals(deleteUser.Id)).FirstOrDefault();
+
+                if (usuarioLogin.Document.Equals(usuario.Document))
+                {
+                    return NotFound(new General()
+                    {
+                        title = "Usuario",
+                        status = 404,
+                        message = "No te puedes eliminar a ti mismo."
                     });
                 }
 
@@ -274,6 +303,156 @@ namespace SIRPSI.Controllers.User
         }
         #endregion
 
+        #region Actualizar
+        //[HttpPut("ActualizarUsuario")]
+        //[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        //public async Task<ActionResult> Put(ActualizarUsuario actualizarUsuario)
+        //{
+        //    try
+        //    {
+        //        //Claims de usuario - Enviados por token
+        //        var identity = HttpContext.User.Identity as ClaimsIdentity;
+
+        //        if (identity != null)
+        //        {
+        //            IEnumerable<Claim> claims = identity.Claims;
+        //        }
+
+        //        //Consulta el documento con los claims
+        //        var documento = identity.FindFirst("documento").Value.ToString();
+
+        //        //Consulta el rol con los claims
+        //        var roles = identity.FindFirst("rol").Value.ToString();
+
+        //        //Consulta de usuario
+        //        var usuario = context.AspNetUsers.Where(u => u.Document.Equals(documento)).FirstOrDefault();
+
+        //        if (usuario == null)
+        //        {
+        //            return NotFound(new General()
+        //            {
+        //                title = "Actualizar tipo documento",
+        //                status = 404,
+        //                message = "Usuario no encontrado"
+        //            });
+        //        }
+
+        //        //Obtiene la url del servicio
+        //        var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+        //        string Url = HttpContext.Request.GetDisplayUrl();
+
+        //        var getUrl = Url.Remove(Url.Length - (countLast + 1));
+
+        //        //Consulta de roles por id de usuario
+
+        //        var rolesList = new List<string>();
+
+        //        //Verifica los roles
+        //        var list = roles.Split(',').ToList();
+
+        //        foreach (var i in list)
+        //        {
+        //            var result = context.AspNetRoles.Where(r => r.Id.Equals(i)).Select(x => x.Description).FirstOrDefault();
+
+        //            if (result != null)
+        //            {
+        //                rolesList.Add(result.ToString());
+        //            }
+        //        }
+
+        //        if (rolesList == null)
+        //        {
+        //            return NotFound(new General()
+        //            {
+        //                title = "Actualizar tipo documento",
+        //                status = 404,
+        //                message = "Roles no encontrados"
+        //            });
+        //        }
+
+        //        //Revisa los permisos de usuario
+        //        var permisos = await context.permisosXUsuario.Where(x => x.Vista.Equals(getUrl) && x.IdUsuario.Equals(usuario.Id)).ToListAsync();
+
+        //        //Consulta si tiene el permiso
+        //        var permitido = permisos.Select(x => x.Actualizar.Equals(true)).FirstOrDefault();
+
+        //        //Si es permitido
+        //        if (permitido == true)
+        //        {
+        //            //Consulta de empresa del usuario
+        //            var existe = await context.AspNetUsers.Where(x => x.Id.Equals(actualizarUsuario.Id)).FirstOrDefaultAsync();
+
+        //            if (existe == null)
+        //            {
+        //                return NotFound(new
+        //                {
+        //                    //Visualizacion de mensajes al usuario del aplicativo
+        //                    title = "Actualizar tipo documento",
+        //                    status = 404,
+        //                    message = "Tipo documento no encontrado"
+        //                });
+        //            }
+
+        //            //Registro de datos
+
+        //            var user = (Student)UserManager.FindById(model.Id);
+
+        //            // Update it with the values from the view model
+        //            user.Name = model.Name;
+        //            user.Surname = model.Surname;
+        //            user.UserName = model.UserName;
+        //            user.Email = model.Email;
+        //            user.PhoneNumber = model.PhoneNumber;
+        //            user.Number = model.Number; //custom property
+        //            user.PasswordHash = checkUser.PasswordHash;
+
+        //            // Apply the changes if any to the db
+        //            UserManager.Update(user);
+
+        //            //context.AspNetUsers.Where(x => x.Id.Equals(existe.Id)).ToList()
+        //            //    .ForEach(r =>
+        //            //    {
+        //            //        r.TypeDocument = actualizarUsuario.TypeDocument;
+        //            //        r.Document = actualizarUsuario.Document;
+
+        //            //        r.UserModify = usuario.Document;
+        //            //        r.ModifiedDate = DateTime.Now.ToDateTimeZone().DateTime;
+        //            //    });
+
+        //            //Guardado de datos
+        //            await context.SaveChangesAsync();
+
+        //            return Ok(new General()
+        //            {
+        //                //Visualizacion de mensajes al usuario del aplicativo
+        //                title = "Actualizar tipo documento",
+        //                status = 200,
+        //                message = "Tipo documento actualizado"
+        //            });
+        //        }
+        //        else
+        //        {
+        //            return BadRequest(new General()
+        //            {
+        //                title = "Actualizar tipo documento",
+        //                status = 400,
+        //                message = "No tiene permisos para actualizar tipo documento"
+        //            });
+        //        }
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        logger.LogError("Actualizar tipo documento" + ex.Message.ToString() + " - " + ex.StackTrace);
+        //        return BadRequest(new General()
+        //        {
+        //            title = "Actualizar tipo documento",
+        //            status = 400,
+        //            message = ""
+        //        });
+        //    }
+        //}
+        #endregion
+
         #region Login
         [HttpPost("Login")]
         public async Task<ActionResult<AuthenticationResponse>> Login(UserCredentials userCredentials)
@@ -300,7 +479,7 @@ namespace SIRPSI.Controllers.User
 
                 var contextListEmpresas = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id)).ToListAsync();
 
-                var dataEmpresa = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id) && x.Documento.Equals(userCredentials.nit)).Select(x => x.Id).FirstOrDefaultAsync();
+                var dataEmpresa = await context.empresas.Where(x => listEmpresasDb.Contains(x.Id) && x.Documento.Equals(userCredentials.IdCompany)).Select(x => x.Id).FirstOrDefaultAsync();
 
 
                 if (dataEmpresa != null)

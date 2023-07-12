@@ -55,7 +55,7 @@ namespace SIRPSI.Controllers.Country
         #region Consulta
         [HttpGet("ConsultarPaises", Name = "consultarPaises")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarPaises consultarPaises)
+        public async Task<ActionResult<object>> Get()
         {
 
             try
@@ -88,7 +88,10 @@ namespace SIRPSI.Controllers.Country
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -126,9 +129,9 @@ namespace SIRPSI.Controllers.Country
                 {
 
                     //Consulta estados
-                    var estados = await context.estados.Where(x => x.Id.Equals(consultarPaises.IdEstado)).ToListAsync();
+                    var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
-                    if (estados == null)
+                    if (estado == null)
                     {
                         return NotFound(new General()
                         {
@@ -139,7 +142,7 @@ namespace SIRPSI.Controllers.Country
                     }
 
                     //Consulta el país
-                    var pais = context.pais.Where(x => x.IdEstado.Equals(consultarPaises.IdEstado)).Select(x => new
+                    var pais = context.pais.Where(x => x.IdEstado.Equals(estado.Id)).Select(x => new
                     {
                         x.Id,
                         x.Nombre,
@@ -221,8 +224,12 @@ namespace SIRPSI.Controllers.Country
                     });
                 }
 
+
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -357,7 +364,10 @@ namespace SIRPSI.Controllers.Country
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -489,7 +499,10 @@ namespace SIRPSI.Controllers.Country
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 

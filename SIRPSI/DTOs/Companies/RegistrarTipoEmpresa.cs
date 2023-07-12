@@ -12,5 +12,6 @@ namespace SIRPSI.DTOs.Companies
         public string? Descripcion { get; set; }
         [Required(ErrorMessage = "El campo {0} es requerido")]
         public string? IdEstado { get; set; }
+
     }
 }

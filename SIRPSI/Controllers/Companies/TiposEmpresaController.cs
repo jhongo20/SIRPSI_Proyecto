@@ -54,7 +54,7 @@ namespace SIRPSI.Controllers.Companies
         #region Consulta
         [HttpGet("ConsultarTipoEmpresa", Name = "consultarTiposEmpresa")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarTipoEmpresa consultarTipoEmpresa)
+        public async Task<ActionResult<object>> Get()
         {
             try
             {
@@ -86,7 +86,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -123,8 +126,8 @@ namespace SIRPSI.Controllers.Companies
                 if (permitido == true)
                 {
 
-                    //Consultar estados
-                    var estado = await context.estados.Where(x => x.Id.Equals(consultarTipoEmpresa.IdEstado)).FirstOrDefaultAsync();
+                    //Consulta estado
+                    var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
                     if (estado == null)
                     {
@@ -219,7 +222,10 @@ namespace SIRPSI.Controllers.Companies
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 

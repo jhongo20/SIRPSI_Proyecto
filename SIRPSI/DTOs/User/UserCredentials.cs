@@ -11,9 +11,6 @@ namespace SIRPSI.DTOs.User
         public string? Document { get; set; }
 
         [Required(ErrorMessage = "El campo {0} es requerido")]
-        public string? nit { get; set; }
-
-        [Required(ErrorMessage = "El campo {0} es requerido")]
         public string? Password { get; set; }
         public string? IdCompany { get; set; }
         public string? IdCountry{ get; set; }    

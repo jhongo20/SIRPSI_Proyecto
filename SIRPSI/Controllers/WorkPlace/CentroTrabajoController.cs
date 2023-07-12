@@ -132,7 +132,9 @@ namespace SIRPSI.Controllers.WorkPlace
                     {
                         x.Id,
                         x.Nombre,
-                        x.Descripcion
+                        x.Descripcion,
+                        x.IdEmpresa,
+                        x.IdEstado
                     }).ToListAsync();
 
                     if (centrosDeTrabajo == null)

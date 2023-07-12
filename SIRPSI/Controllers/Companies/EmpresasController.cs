@@ -129,7 +129,6 @@ namespace SIRPSI.Controllers.Companies
                     //Consulta estados
                     var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
-
                     if (estado == null)
                     {
                         return NotFound(new General()
@@ -141,20 +140,39 @@ namespace SIRPSI.Controllers.Companies
                     }
 
                     //Consulta el empresa
-                    var empresa = context.empresas.Where(x => x.IdEstado.Equals(estado.Id)).Select(x => new
-                    {
-                        x.Id,
-                        x.TipoDocumento,
-                        x.Documento,
-                        x.DigitoVerificacion,
-                        x.IdTipoEmpresa,
-                        x.Nombre,
-                        x.IdMinisterio,
-                        x.IdEstado,
-                        x.FechaRegistro,
-                        x.FechaModifico
-
-                    }).ToList();
+                    var empresa = context.empresas.
+                        Join(context.tiposDocumento,
+                        e => e.TipoDocumento,
+                        td => td.Id,
+                        (e, td) => new { empresa = e, tipoDoc = td }
+                        ).
+                        Join(context.tiposEmpresas,
+                        er => er.empresa.IdTipoEmpresa,
+                        te => te.Id,
+                        (er, te) => new { resulEmpre = er, tipoEmp = te })
+                        .Join(context.ministerio,
+                        r => r.resulEmpre.empresa.IdMinisterio,
+                        m => m.Id,
+                        (r, m) => new { restipoEmp = r, ministerio = m })
+                        .Join(context.estados,
+                        rt => rt.restipoEmp.resulEmpre.empresa.IdEstado,
+                        es => es.Id,
+                        (rt,es) => new { rTotal = rt, estado = es })
+                        .Where(x => x.rTotal.restipoEmp.resulEmpre.empresa.IdEstado.Equals(estado.Id)).Select(x => new
+                        {
+                            x.rTotal.restipoEmp.resulEmpre.empresa.Id,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.TipoDocumento,
+                            tipoDocNombre = x.rTotal.restipoEmp.resulEmpre.tipoDoc.Nombre,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.Documento,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.DigitoVerificacion,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.IdTipoEmpresa,
+                            tipoEmpNombre = x.rTotal.restipoEmp.tipoEmp.Nombre,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.Nombre,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.IdMinisterio,
+                            ministerioNombre = x.rTotal.ministerio.Nombre,
+                            x.rTotal.restipoEmp.resulEmpre.empresa.IdEstado,
+                            estadoNombre = x.estado.Nombre
+                        }).ToList();
 
                     if (empresa == null)
                     {
@@ -322,6 +340,7 @@ namespace SIRPSI.Controllers.Companies
                     empresa.IdTipoEmpresa = registrarEmpresas.IdTipoEmpresa;
                     empresa.DigitoVerificacion = registrarEmpresas.DigitoVerificacion;
                     empresa.IdEstado = estados.Id;
+                    empresa.IdMinisterio = registrarEmpresas.IdMinisterio;
                     empresa.UsuarioRegistro = usuario.Document;
                     empresa.FechaRegistro = DateTime.Now.ToDateTimeZone().DateTime;
                     empresa.FechaModifico = null;
@@ -524,7 +543,7 @@ namespace SIRPSI.Controllers.Companies
                     title = "Actualizar empresa",
                     status = 400,
                     message = ""
-                }); 
+                });
             }
         }
         #endregion

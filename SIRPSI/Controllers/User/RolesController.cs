@@ -20,7 +20,7 @@ using System.Security.Claims;
 
 namespace SIRPSI.Controllers.User
 {
-    [Route("api/roles")]
+    [Route("api/roles")]            
     [ApiController]
     [EnableCors("CorsApi")]
     public class RolesController : ControllerBase
@@ -57,7 +57,7 @@ namespace SIRPSI.Controllers.User
         #region Consulta
         [HttpGet("ConsultarRoles", Name = "consultarRoles")]
         [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
-        public async Task<ActionResult<object>> Get([FromBody] ConsultarRoles consultarRoles)
+        public async Task<ActionResult<object>> Get()
         {
             try
             {
@@ -89,7 +89,10 @@ namespace SIRPSI.Controllers.User
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -127,7 +130,7 @@ namespace SIRPSI.Controllers.User
                 {
 
                     //Consulta estado
-                    var estado = await context.estados.Where(x => x.Id.Equals(consultarRoles.Status)).FirstOrDefaultAsync();
+                    var estado = await context.estados.Where(x => x.IdConsecutivo.Equals(1)).FirstOrDefaultAsync();
 
                     if (estado == null)
                     {
@@ -221,7 +224,10 @@ namespace SIRPSI.Controllers.User
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
                 var rolesList = new List<string>();
@@ -355,7 +361,10 @@ namespace SIRPSI.Controllers.User
                 }
 
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 
@@ -488,9 +497,11 @@ namespace SIRPSI.Controllers.User
                     });
                 }
 
-
                 //Obtiene la url del servicio
-                string getUrl = HttpContext.Request.GetDisplayUrl();
+                var countLast = HttpContext.Request.GetDisplayUrl().Split("/").Last().Count();
+                string Url = HttpContext.Request.GetDisplayUrl();
+
+                var getUrl = Url.Remove(Url.Length - (countLast + 1));
 
                 //Consulta de roles por id de usuario
 

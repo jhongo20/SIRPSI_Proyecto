@@ -134,9 +134,7 @@ namespace SIRPSI.Controllers.User
                         .Join(context.Roles,
                         ru => ru.RoleId,
                         r => r.Id,
-                        (ru, r) => new { rolUsuario = ru, roles = r }).
-                        
-                        
+                        (ru, r) => new { rolUsuario = ru, roles = r }).                       
                         Where(x => x.rolUsuario.IdEstado.Equals(estado)).Select(x => new
                     {
                         x.rolUsuario.UserId,
